@@ -39,7 +39,7 @@ async function fetchAndMergeTabs(tabMap) {
       for (let row of parsed) {
         const label = row[0];
         const value = row[col];
-        modelData[modelName][label] = value; // Override existing keys
+        modelData[modelName][label] = value; // Override existing
       }
     }
   }
@@ -50,12 +50,9 @@ async function fetchAndMergeTabs(tabMap) {
 async function updateOffersFromSheet() {
   console.log("Fetching data from all sheet tabs...");
 
-  // 🔁 Map of published CSV URLs by tab name
   const csvTabs = {
-    "Lease Offers": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=0",
-    // Add more sheets:
-    // "APR Offers": "https://...&gid=123456",
-    // "Bonus Offers": "https://...&gid=234567",
+    "Lease Offers": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=0"
+    // Add more tabs here with their respective gid CSV URLs
   };
 
   const modelData = await fetchAndMergeTabs(csvTabs);
@@ -88,13 +85,12 @@ async function updateOffersFromSheet() {
       if (value && value.toLowerCase() === "hide") {
         const element = section.querySelector(`.${className}`);
         if (element) {
-          console.log(`Hiding .${className} for ${modelKey}`);
           element.style.display = "none";
         }
       }
     });
 
-    // Offer image
+    // Set offer image
     const imgEl = section.querySelector(".offer-image");
     if (imgEl && data[imageKey]) {
       imgEl.src = data[imageKey];
@@ -129,7 +125,8 @@ async function updateOffersFromSheet() {
       "bonus-4-disclaimer": "Bonus 4 Disclaimer",
       "bonus-5-headline": "Bonus 5 Headline",
       "bonus-5-details": "Bonus 5 Details",
-      "bonus-5-disclaimer": "Bonus 5 Disclaimer"
+      "bonus-5-disclaimer": "Bonus 5 Disclaimer",
+      "shopping-link": "Shopping Link"
     };
 
     Object.entries(mapping).forEach(([className, sheetKey]) => {
@@ -147,7 +144,12 @@ async function updateOffersFromSheet() {
       }
 
       if (value) {
-        el.textContent = value;
+        if (className === "shopping-link") {
+          el.href = value;
+          el.style.display = "inline-block";
+        } else {
+          el.textContent = value;
+        }
       } else if (disclaimerClasses.includes(className)) {
         const detailsEl = el.closest('details');
         if (detailsEl) {
@@ -158,7 +160,7 @@ async function updateOffersFromSheet() {
   });
 }
 
-// 🕓 Wait for DOM content to appear
+// Wait for DOM to be ready
 function waitForOffersToLoad(retries = 20) {
   if (document.querySelector('.car-offer')) {
     updateOffersFromSheet();
