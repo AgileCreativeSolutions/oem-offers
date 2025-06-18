@@ -24,26 +24,41 @@ function parseCSV(csv) {
   return rows;
 }
 
-async function updateOffersFromSheet() {
-  console.log("Fetching offers from Google Sheet...");
-
-  const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv';
-  const response = await fetch(csvUrl);
-  const csvText = await response.text();
-  const parsed = parseCSV(csvText);
-
-  const [fields, ...dataRows] = parsed;
+async function fetchAndMergeTabs(tabMap) {
   const modelData = {};
 
-  for (let col = 1; col < fields.length; col++) {
-    const modelName = fields[col];
-    modelData[modelName] = {};
-    for (let row of parsed) {
-      const label = row[0];
-      const value = row[col];
-      modelData[modelName][label] = value;
+  for (const [tabName, url] of Object.entries(tabMap)) {
+    const response = await fetch(url);
+    const csvText = await response.text();
+    const parsed = parseCSV(csvText);
+    const [fields, ...dataRows] = parsed;
+
+    for (let col = 1; col < fields.length; col++) {
+      const modelName = fields[col];
+      modelData[modelName] = modelData[modelName] || {};
+      for (let row of parsed) {
+        const label = row[0];
+        const value = row[col];
+        modelData[modelName][label] = value; // Override existing keys
+      }
     }
   }
+
+  return modelData;
+}
+
+async function updateOffersFromSheet() {
+  console.log("Fetching data from all sheet tabs...");
+
+  // 🔁 Map of published CSV URLs by tab name
+  const csvTabs = {
+    "Lease Offers": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=0",
+    // Add more sheets:
+    // "APR Offers": "https://...&gid=123456",
+    // "Bonus Offers": "https://...&gid=234567",
+  };
+
+  const modelData = await fetchAndMergeTabs(csvTabs);
 
   const disclaimerClasses = [
     "lease-disclaimer", "apr-disclaimer",
@@ -67,7 +82,7 @@ async function updateOffersFromSheet() {
 
     console.log(`Updating content for model: ${modelKey}`);
 
-    // Hide sections if flagged
+    // Hide sections
     Object.entries(hideMap).forEach(([sheetRow, className]) => {
       const value = data[sheetRow];
       if (value && value.toLowerCase() === "hide") {
@@ -79,15 +94,21 @@ async function updateOffersFromSheet() {
       }
     });
 
-    // Set image if provided
+    // Offer image
     const imgEl = section.querySelector(".offer-image");
     if (imgEl && data[imageKey]) {
       imgEl.src = data[imageKey];
       imgEl.style.display = "block";
     }
 
+    // Field mapping
     const mapping = {
+      "model-title": "Model Title",
+      "model-details": "Model Details",
       "model": "Model",
+      "trim-level": "Trim Level",
+      "msrp": "MSRP",
+      "model-bonus": "Model Bonus",
       "lease-payment": "Lease Payment",
       "lease-terms": "Lease Terms",
       "lease-disclaimer": "Lease Disclaimer",
@@ -108,8 +129,7 @@ async function updateOffersFromSheet() {
       "bonus-4-disclaimer": "Bonus 4 Disclaimer",
       "bonus-5-headline": "Bonus 5 Headline",
       "bonus-5-details": "Bonus 5 Details",
-      "bonus-5-disclaimer": "Bonus 5 Disclaimer",
-      "model-bonus": "Model Bonus"
+      "bonus-5-disclaimer": "Bonus 5 Disclaimer"
     };
 
     Object.entries(mapping).forEach(([className, sheetKey]) => {
@@ -138,13 +158,11 @@ async function updateOffersFromSheet() {
   });
 }
 
-// 🔁 Resilient loader: wait until .car-offer exists in DOM
+// 🕓 Wait for DOM content to appear
 function waitForOffersToLoad(retries = 20) {
   if (document.querySelector('.car-offer')) {
-    console.log("car-offer element found, loading offer data...");
     updateOffersFromSheet();
   } else if (retries > 0) {
-    console.log("Waiting for car-offer to appear...");
     setTimeout(() => waitForOffersToLoad(retries - 1), 300);
   } else {
     console.warn("car-offer not found after retries — script aborted.");
