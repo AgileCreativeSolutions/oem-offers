@@ -54,7 +54,8 @@ async function updateOffersFromSheet() {
 const csvTabs = {
 "LAG": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=0",
 "VV": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=726262632",
-"JV": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=751272513"
+"JV": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=751272513",
+"PV": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=1392277631",
 };
 
 const modelData = await fetchAndMergeTabs(csvTabs);
@@ -71,6 +72,7 @@ const imageKey = "Offer Image";
 const hideMap = {
 "APR Card": "apr-card",
 "Lease Card": "lease-card",
+"Purchase Card": "purchase-card",
 "Bonus Offers": "bonus-offers"
 };
 
@@ -134,7 +136,11 @@ const mapping = {
 "bonus-5-headline": "Bonus 5 Headline",
 "bonus-5-details": "Bonus 5 Details",
 "bonus-5-disclaimer": "Bonus 5 Disclaimer",
-"shopping-link": "Shopping Link"
+"shopping-link": "Shopping Link",
+"lease-allowance": "Lease Allowance",
+"purchase-allowance": "Purchase Allowance",
+"loyalty-bonus": "Loyalty Bonus",
+"savings": "Savings"
 };
 
 Object.entries(mapping).forEach(([className, sheetKey]) => {
@@ -161,13 +167,6 @@ el.style.display = "inline-block";
 el.textContent = value;
 }
 
-// Hide empty disclaimers
-if (disclaimerClasses.includes(className) && !value.trim()) {
-const detailsEl = el.closest('details');
-if (detailsEl) {
-detailsEl.style.display = "none";
-}
-}
 });
 });
 }
