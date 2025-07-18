@@ -70,6 +70,7 @@ const imageKey = "Offer Image";
 const hideMap = {
 "APR Card": "apr-card",
 "Lease Card": "lease-card",
+"Buy Card": "buy-card",
 "Bonus Offers": "bonus-offers"
 };
 
@@ -116,7 +117,8 @@ const mapping = {
 "comment-3": "Comment 3",
 "comment-4": "Comment 4",
 "comment-5": "Comment 5",
-"disclaimer": "Disclaimer"
+"disclaimer": "Disclaimer",
+"date": "Date",
 };
 
 Object.entries(mapping).forEach(([className, sheetKey]) => {
@@ -143,13 +145,6 @@ el.style.display = "inline-block";
 el.textContent = value;
 }
 
-// Hide empty disclaimers
-if (disclaimerClasses.includes(className) && !value.trim()) {
-const detailsEl = el.closest('details');
-if (detailsEl) {
-detailsEl.style.display = "none";
-}
-}
 });
 });
 }
