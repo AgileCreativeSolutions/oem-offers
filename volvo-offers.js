@@ -18,9 +18,12 @@ row.push(cell.trim()); rows.push(row); row = []; cell = '';
 cell += char;
 }
 }
+
 if (cell.length || row.length) {
-row.push(cell.trim()); rows.push(row);
+row.push(cell.trim());
+rows.push(row);
 }
+
 return rows;
 }
 
@@ -28,7 +31,9 @@ async function fetchAndMergeTabs(tabMap) {
 const modelData = {};
 
 for (const [tabName, url] of Object.entries(tabMap)) {
+try {
 const response = await fetch(url);
+if (!response.ok) throw new Error(`Failed to fetch: ${url}`);
 const csvText = await response.text();
 const parsed = parseCSV(csvText);
 const [fields, ...dataRows] = parsed;
@@ -36,14 +41,20 @@ const [fields, ...dataRows] = parsed;
 for (let col = 1; col < fields.length; col++) {
 const modelName = fields[col];
 modelData[modelName] = modelData[modelName] || {};
-for (let row of parsed) {
+
+for (let row of dataRows) {
 const label = row[0];
 const value = row[col];
+if (label) {
 modelData[modelName][label] = {
 value: value,
 source: tabName
 };
 }
+}
+}
+} catch (err) {
+console.error(`Error processing ${tabName}:`, err);
 }
 }
 
@@ -60,15 +71,6 @@ const csvTabs = {
 
 const modelData = await fetchAndMergeTabs(csvTabs);
 
-const disclaimerClasses = [
-"lease-disclaimer", "apr-disclaimer",
-"bonus-1-disclaimer", "bonus-2-disclaimer",
-"bonus-3-disclaimer", "bonus-4-disclaimer",
-"bonus-5-disclaimer"
-];
-
-const imageKey = "Offer Image";
-
 const hideMap = {
 "APR Card": "apr-card",
 "Lease Card": "lease-card",
@@ -80,26 +82,21 @@ document.querySelectorAll('.car-offer').forEach(section => {
 const modelKey = section.dataset.model;
 const data = modelData[modelKey];
 
-// Hide the full block if model is missing or set to hide
 if (!data || (data["Visibility"] && data["Visibility"].value.toLowerCase() === "hide")) {
 section.style.display = "none";
 return;
 }
 
-// Hide specific sections
-Object.entries(hideMap).forEach(([sheetRow, className]) => {
-const valueObj = data[sheetRow];
-if (valueObj && valueObj.value.toLowerCase() === "hide") {
-const element = section.querySelector(`.${className}`);
-if (element) {
-element.style.display = "none";
-}
+Object.entries(hideMap).forEach(([label, className]) => {
+const entry = data[label];
+if (entry && entry.value.toLowerCase() === "hide") {
+const el = section.querySelector(`.${className}`);
+if (el) el.style.display = "none";
 }
 });
 
-// Set offer image
 const imgEl = section.querySelector(".offer-image");
-const imageObj = data[imageKey];
+const imageObj = data["Offer Image"];
 if (imgEl && imageObj) {
 imgEl.src = imageObj.value;
 imgEl.style.display = "block";
@@ -136,7 +133,6 @@ const mapping = {
 "bonus-5-headline": "Bonus 5 Headline",
 "bonus-5-details": "Bonus 5 Details",
 "bonus-5-disclaimer": "Bonus 5 Disclaimer",
-"shopping-link": "Shopping Link",
 "lease-allowance": "Lease Allowance",
 "purchase-allowance": "Purchase Allowance",
 "loyalty-bonus": "Loyalty Bonus",
@@ -145,12 +141,9 @@ const mapping = {
 
 Object.entries(mapping).forEach(([className, sheetKey]) => {
 const el = section.querySelector(`.${className}`);
-if (!el) return;
+if (!el || !data[sheetKey]) return;
 
-const dataObj = data[sheetKey];
-if (!dataObj) return;
-
-let value = dataObj.value;
+let value = data[sheetKey].value;
 
 if (className === "lease-payment" && value && !value.includes('$')) {
 value = `$${value}`;
@@ -160,13 +153,27 @@ if (className === "apr" && value) {
 value = value.includes('%') ? value : `${(parseFloat(value) * 100).toFixed(2)}%`;
 }
 
-if (className === "shopping-link") {
-el.href = value;
-el.style.display = "inline-block";
-} else {
 el.textContent = value;
+});
+
+// Primary shopping link
+const primaryLink = data["Shopping Link"];
+const primaryEl = section.querySelector(".shopping-link");
+if (primaryEl && primaryLink) {
+primaryEl.href = primaryLink.value;
+primaryEl.style.display = "inline-block";
 }
 
+// Extra shopping links: Shopping Link 2, 3, etc.
+Object.keys(data).forEach(key => {
+if (/^Shopping Link \d+$/.test(key)) {
+const num = key.match(/\d+/)[0];
+const el = section.querySelector(`.shopping-link-${num}`);
+if (el && data[key]) {
+el.href = data[key].value;
+el.style.display = "inline-block";
+}
+}
 });
 });
 }
