@@ -36,7 +36,7 @@ const [fields, ...dataRows] = parsed;
 for (let col = 1; col < fields.length; col++) {
 const modelName = fields[col];
 modelData[modelName] = modelData[modelName] || {};
-for (let row of parsed) {
+for (let row of dataRows) {
 const label = row[0];
 const value = row[col];
 modelData[modelName][label] = {
@@ -112,7 +112,7 @@ const mapping = {
 "comment-4": "Comment 4",
 "comment-5": "Comment 5",
 "disclaimer": "Disclaimer",
-"date": "Date",
+"date": "Date"
 };
 
 Object.entries(mapping).forEach(([className, sheetKey]) => {
@@ -132,13 +132,27 @@ if (className === "apr" && value) {
 value = value.includes('%') ? value : `${(parseFloat(value) * 100).toFixed(2)}%`;
 }
 
-if (className === "shopping-link") {
-el.href = value;
-el.style.display = "inline-block";
-} else {
 el.textContent = value;
+});
+
+// Primary shopping link (unchanged behavior)
+const primaryLink = data["Shopping Link"];
+const primaryEl = section.querySelector(".shopping-link");
+if (primaryEl && primaryLink) {
+primaryEl.href = primaryLink.value;
+primaryEl.style.display = "inline-block";
 }
 
+// Additional shopping links: Shopping Link 2, 3, etc.
+Object.keys(data).forEach(key => {
+if (/^Shopping Link \d+$/.test(key)) {
+const num = key.match(/\d+/)[0];
+const el = section.querySelector(`.shopping-link-${num}`);
+if (el && data[key]) {
+el.href = data[key].value;
+el.style.display = "inline-block";
+}
+}
 });
 });
 }
