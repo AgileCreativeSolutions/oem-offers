@@ -68,10 +68,7 @@ const disclaimerClasses = [
 const imageKey = "Offer Image";
 
 const hideMap = {
-"APR Card": "apr-card",
-"Lease Card": "lease-card",
-"Buy Card": "buy-card",
-"Bonus Offers": "bonus-offers"
+"Comment Card": "comment-card"
 };
 
 document.querySelectorAll('.car-offer').forEach(section => {
