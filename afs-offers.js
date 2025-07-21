@@ -102,10 +102,7 @@ imgEl.style.display = "block";
 
 const mapping = {
 "units-available": "Units Available",
-"year": "Year",
-"make": "Make",
-"model": "Model",
-"trim": "Trim",
+"vehicle": "Vehicle",
 "save": "Save",
 "msrp": "MSRP",
 "fleet-sale-price": "Fleet Sale Price",
