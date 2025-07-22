@@ -99,10 +99,13 @@ if (el) el.style.display = "none";
 
 const imgEl = section.querySelector(".offer-image");
 const imageObj = data["Offer Image"];
-const modelTitle = data["Model Title"];
+const modelTitle = data["Model Title"]?.value;
+const modelYear = data["Model Year"]?.value;
+const trimLevel = data["Trim Level"]?.value;
+
 if (imgEl && imageObj) {
 imgEl.src = imageObj.value;
-imgEl.alt = modelTitle?.value || "Vehicle offer image";
+imgEl.alt = [modelYear, modelTitle, trimLevel].filter(Boolean).join(' ') || "Vehicle offer image";
 imgEl.style.display = "block";
 }
 
