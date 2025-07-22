@@ -43,6 +43,7 @@ const modelName = fields[col];
 modelData[modelName] = modelData[modelName] || {};
 
 for (let row of dataRows) {
+if (!row || row.length <= col) continue;
 const label = row[0];
 const value = row[col];
 if (label) {
@@ -67,7 +68,7 @@ const csvTabs = {
 "LAG-Nav": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=1600558128",
 "VV": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=726262632",
 "JV": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=751272513",
-"PV": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=1392277631",
+"PV": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=1392277631"
 };
 
 const modelData = await fetchAndMergeTabs(csvTabs);
@@ -98,8 +99,10 @@ if (el) el.style.display = "none";
 
 const imgEl = section.querySelector(".offer-image");
 const imageObj = data["Offer Image"];
+const modelTitle = data["Model Title"];
 if (imgEl && imageObj) {
 imgEl.src = imageObj.value;
+imgEl.alt = modelTitle?.value || "Vehicle offer image";
 imgEl.style.display = "block";
 }
 
@@ -157,19 +160,12 @@ value = value.includes('%') ? value : `${(parseFloat(value) * 100).toFixed(2)}%`
 el.textContent = value;
 });
 
-// Primary shopping link
-const primaryLink = data["Shopping Link"];
-const primaryEl = section.querySelector(".shopping-link");
-if (primaryEl && primaryLink) {
-primaryEl.href = primaryLink.value;
-primaryEl.style.display = "inline-block";
-}
-
-// Extra shopping links: Shopping Link 2, 3, etc.
+// Handle all shopping links (primary + extras)
 Object.keys(data).forEach(key => {
-if (/^Shopping Link \d+$/.test(key)) {
-const num = key.match(/\d+/)[0];
-const el = section.querySelector(`.shopping-link-${num}`);
+if (/^Shopping Link(\s\d+)?$/.test(key)) {
+const num = key.match(/\d+/)?.[0] || "";
+const className = `shopping-link${num ? '-' + num : ''}`;
+const el = section.querySelector(`.${className}`);
 if (el && data[key]) {
 el.href = data[key].value;
 el.style.display = "inline-block";
