@@ -107,7 +107,7 @@ imgEl.style.display = "block";
 
 const mapping = {
 "units-available": "Units Available",
-"vehicle": "Vehicle",
+"model-title": "Model Title",
 "save": "Save",
 "msrp": "MSRP",
 "fleet-sale-price": "Fleet Sale Price",
