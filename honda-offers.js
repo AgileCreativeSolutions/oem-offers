@@ -94,9 +94,11 @@ element.style.display = "none";
 });
 
 const imgEl = section.querySelector(".offer-image");
-const imageObj = data[imageKey];
+const imageObj = data["Offer Image"];
+const modelTitle = data["Model Title"];
 if (imgEl && imageObj) {
 imgEl.src = imageObj.value;
+imgEl.alt = modelTitle?.value || "Vehicle offer image";
 imgEl.style.display = "block";
 }
 
