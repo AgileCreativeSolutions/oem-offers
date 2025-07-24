@@ -52,8 +52,8 @@ return modelData;
 
 async function updateOffersFromSheet() {
 const csvTabs = {
-"Master": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjprXV_Lvni8wfpyzN4-F1XIdvoQEGEzlNPC69zkzC-19alfdjBCGUjdof0yZItXmyBBG1v6wk74VB/pub?output=csv&gid=0",
-"AFS": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjprXV_Lvni8wfpyzN4-F1XIdvoQEGEzlNPC69zkzC-19alfdjBCGUjdof0yZItXmyBBG1v6wk74VB/pub?output=csv&gid=956788854"
+"AFS": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjprXV_Lvni8wfpyzN4-F1XIdvoQEGEzlNPC69zkzC-19alfdjBCGUjdof0yZItXmyBBG1v6wk74VB/pub?output=csv&gid=956788854",
+"Master": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjprXV_Lvni8wfpyzN4-F1XIdvoQEGEzlNPC69zkzC-19alfdjBCGUjdof0yZItXmyBBG1v6wk74VB/pub?output=csv&gid=1609648777"
 };
 
 const modelData = await fetchAndMergeTabs(csvTabs);
@@ -121,13 +121,10 @@ const mapping = {
 };
 
 Object.entries(mapping).forEach(([className, sheetKey]) => {
-const el = section.querySelector(`.${className}`);
-if (!el) return;
+const elements = section.querySelectorAll(`.${className}`);
+if (!elements.length || !data[sheetKey]) return;
 
-const dataObj = data[sheetKey];
-if (!dataObj) return;
-
-let value = dataObj.value;
+let value = data[sheetKey].value;
 
 if (className === "lease-payment" && value && !value.includes('$')) {
 value = `$${value}`;
@@ -137,7 +134,9 @@ if (className === "apr" && value) {
 value = value.includes('%') ? value : `${(parseFloat(value) * 100).toFixed(2)}%`;
 }
 
+elements.forEach(el => {
 el.textContent = value;
+});
 });
 
 // Primary shopping link (unchanged behavior)
