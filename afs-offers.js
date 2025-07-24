@@ -111,6 +111,7 @@ const mapping = {
 "save": "Save",
 "msrp": "MSRP",
 "fleet-sale-price": "Fleet Sale Price",
+"stock-number": "Stock Number",
 "comment-1": "Comment 1",
 "comment-2": "Comment 2",
 "comment-3": "Comment 3",
