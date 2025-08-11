@@ -77,6 +77,7 @@ const hideMap = {
 "APR Card": "apr-card",
 "Lease Card": "lease-card",
 "Purchase Card": "purchase-card",
+"Buy Card": "buy-card",
 "Bonus Offers": "bonus-offers"
 };
 
@@ -122,6 +123,9 @@ const mapping = {
 "apr": "APR",
 "apr-terms": "APR Terms",
 "apr-disclaimer": "APR Disclaimer",
+"buy": "Buy",
+"buy-terms": "Buy Terms",
+"buy-disclaimer": "Buy Disclaimer",
 "purchase": "Purchase",
 "purchase-terms": "Purchase Terms",
 "purchase-disclaimer": "Purchase Disclaimer",
@@ -147,8 +151,8 @@ const mapping = {
 };
 
 Object.entries(mapping).forEach(([className, sheetKey]) => {
-const el = section.querySelector(`.${className}`);
-if (!el || !data[sheetKey]) return;
+const elements = section.querySelectorAll(`.${className}`);
+if (!elements.length || !data[sheetKey]) return;
 
 let value = data[sheetKey].value;
 
@@ -160,7 +164,9 @@ if (className === "apr" && value) {
 value = value.includes('%') ? value : `${(parseFloat(value) * 100).toFixed(2)}%`;
 }
 
+elements.forEach(el => {
 el.textContent = value;
+});
 });
 
 // Handle all shopping links (primary + extras)
