@@ -53,7 +53,7 @@ return modelData;
 async function updateOffersFromSheet() {
 const csvTabs = {
 "RSM": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTa_l-JizbJbuK69JtJQz5D1dA45_1kICCn0F2Bfl3lGeVVwi_YMlVYXmc5KgZ2lmtDFLcjrTpALXeF/pub?output=csv&gid=517885078",
-"HV": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTa_l-JizbJbuK69JtJQz5D1dA45_1kICCn0F2Bfl3lGeVVwi_YMlVYXmc5KgZ2lmtDFLcjrTpALXeF/pub?output=csv&#gid=2109471915"
+"HV": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTa_l-JizbJbuK69JtJQz5D1dA45_1kICCn0F2Bfl3lGeVVwi_YMlVYXmc5KgZ2lmtDFLcjrTpALXeF/pub?output=csv&gid=2109471915"
 };
 
 const modelData = await fetchAndMergeTabs(csvTabs);
