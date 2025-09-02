@@ -131,10 +131,13 @@ const mapping = {
 };
 
 Object.entries(mapping).forEach(([className, sheetKey]) => {
-const elements = section.querySelectorAll(`.${className}`);
-if (!elements.length || !data[sheetKey]) return;
+const el = section.querySelector(`.${className}`);
+if (!el) return;
 
-let value = data[sheetKey].value;
+const dataObj = data[sheetKey];
+if (!dataObj) return;
+
+let value = dataObj.value;
 
 if (className === "lease-payment" && value && !value.includes('$')) {
 value = `$${value}`;
@@ -144,9 +147,12 @@ if (className === "apr" && value) {
 value = value.includes('%') ? value : `${(parseFloat(value) * 100).toFixed(2)}%`;
 }
 
-elements.forEach(el => {
+if (className === "shopping-link") {
+el.href = value;
+el.style.display = "inline-block";
+} else {
 el.textContent = value;
-});
+}
 });
 
 // Primary shopping link (Shopping Link)
