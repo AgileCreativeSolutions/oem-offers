@@ -2,80 +2,58 @@
 function parseCSV(csv) {
   const rows = [];
   let inQuotes = false, row = [], cell = '';
-
   for (let i = 0; i < csv.length; i++) {
-    const char = csv[i];
-    const nextChar = csv[i + 1];
-
-    if (char === '"' && inQuotes && nextChar === '"') {
-      cell += '"'; i++;
-    } else if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) {
-      row.push(cell.trim()); cell = '';
-    } else if (char === '\n' && !inQuotes) {
-      row.push(cell.trim()); rows.push(row); row = []; cell = '';
-    } else {
-      cell += char;
-    }
+    const char = csv[i], nextChar = csv[i + 1];
+    if (char === '"' && inQuotes && nextChar === '"') { cell += '"'; i++; }
+    else if (char === '"') { inQuotes = !inQuotes; }
+    else if (char === ',' && !inQuotes) { row.push(cell.trim()); cell = ''; }
+    else if (char === '\n' && !inQuotes) { row.push(cell.trim()); rows.push(row); row = []; cell = ''; }
+    else if (char !== '\r' || inQuotes) { cell += char; }
   }
-
-  if (cell.length || row.length) {
-    row.push(cell.trim());
-    rows.push(row);
-  }
-
+  if (cell.length || row.length) { row.push(cell.trim()); rows.push(row); }
   return rows;
 }
 
 // ---------- MERGE MULTIPLE SHEET TABS ----------
 async function fetchAndMergeTabs(tabMap) {
   const modelData = {};
-
   for (const [tabName, url] of Object.entries(tabMap)) {
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error(`Failed to fetch: ${url}`);
-      const csvText = await response.text();
-      const parsed = parseCSV(csvText);
+      const parsed = parseCSV(await response.text());
+      if (!parsed.length) continue;
       const [fields, ...dataRows] = parsed;
 
       for (let col = 1; col < fields.length; col++) {
         const modelName = fields[col];
+        if (!modelName) continue;
         modelData[modelName] = modelData[modelName] || {};
-
-        for (let row of dataRows) {
+        for (const row of dataRows) {
           if (!row || row.length <= col) continue;
           const label = row[0];
-          const value = row[col];
-          if (label) {
-            modelData[modelName][label] = {
-              value: value,
-              source: tabName
-            };
-          }
+          if (!label) continue;
+          modelData[modelName][label] = { value: row[col] };
         }
       }
     } catch (err) {
       console.error(`Error processing ${tabName}:`, err);
     }
   }
-
   return modelData;
 }
 
-// ---------- HELPERS FOR PAGE-AWARE HIDING ----------
+// ---------- HELPERS ----------
 function getPageType() {
-  // prefer explicit marker if you add <body data-page-type="specials|model">
-  const explicit = document.body?.dataset?.pageType;
-  if (explicit === 'specials' || explicit === 'model') return explicit;
-
-  // fallback heuristics
+  const fromHtml = document.documentElement?.dataset?.pageType;
+  if (fromHtml === 'specials' || fromHtml === 'model') return fromHtml;
+  const fromBody = document.body?.dataset?.pageType;
+  if (fromBody === 'specials' || fromBody === 'model') return fromBody;
+  const node = document.querySelector('[data-page-type]');
+  const val = node?.getAttribute('data-page-type')?.toLowerCase();
+  if (val === 'specials' || val === 'model') return val;
   if (document.querySelector('.acs-specials')) return 'specials';
-  if (document.querySelector('.acs-model-page')) return 'model';
-
-  // default
-  return 'specials';
+  return 'unknown';
 }
 
 function isHide(val) {
@@ -84,7 +62,7 @@ function isHide(val) {
   return v === 'hide' || v === 'hidden' || v === 'no' || v === '0' || v === 'false';
 }
 
-// ---------- MAIN RENDER ----------
+// ---------- MAIN ----------
 async function updateOffersFromSheet() {
   const csvTabs = {
     "LAG": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=0",
@@ -96,15 +74,13 @@ async function updateOffersFromSheet() {
   };
 
   const modelData = await fetchAndMergeTabs(csvTabs);
-
-  // element-level hide controls (keep existing keys; do NOT include page-visibility here,
-  // because those should hide the WHOLE card)
   const hideMap = {
     "APR Card": "apr-card",
     "Lease Card": "lease-card",
     "Purchase Card": "purchase-card",
     "Buy Card": "buy-card",
     "Bonus Offers": "bonus-offers",
+    "Title Card": "title-card",
     "Offer 1 Card": "offer-1-card",
     "Offer 2 Card": "offer-2-card",
     "Offer 3 Card": "offer-3-card",
@@ -117,22 +93,18 @@ async function updateOffersFromSheet() {
     const modelKey = section.dataset.model;
     const data = modelData[modelKey];
 
-    // if no data, hide whole section
-    if (!data) { section.style.display = "none"; return; }
+    if (!data) { section.style.display = "none"; section.setAttribute("aria-hidden","true"); return; }
 
-    // global whole-card hide
     const hideGlobal = isHide(data["Visibility"]?.value);
-
-    // page-aware whole-card hide
     const hideOnSpecials = pageType === 'specials' && isHide(data["Specials Page Visibility"]?.value);
     const hideOnModel    = pageType === 'model'    && isHide(data["Model Page Visibility"]?.value);
 
     if (hideGlobal || hideOnSpecials || hideOnModel) {
       section.style.display = "none";
+      section.setAttribute("aria-hidden","true");
       return;
     }
 
-    // element-level hide
     Object.entries(hideMap).forEach(([label, className]) => {
       const entry = data[label];
       if (entry && isHide(entry.value)) {
@@ -141,21 +113,14 @@ async function updateOffersFromSheet() {
       }
     });
 
-    // image + basic fields
     const imgEl = section.querySelector(".offer-image");
     const imageObj = data["Offer Image"];
-    const modelTitle = data["Model Title"]?.value;
-    const modelYear = data["Model Year"]?.value;
-    const trimLevel = data["Trim Level"]?.value;
-
-    if (imgEl && imageObj) {
+    if (imgEl && imageObj?.value) {
       imgEl.src = imageObj.value;
-      imgEl.alt = [modelYear, modelTitle, trimLevel].filter(Boolean).join(' ') || "Vehicle offer image";
-      imgEl.style.display = "block";
+      imgEl.alt = data["Model Title"]?.value || '';
     }
 
-    // text mappings
-    const mapping = {
+    const textMap = {
       "model-title": "Model Title",
       "model-details": "Model Details",
       "model": "Model",
@@ -209,52 +174,35 @@ async function updateOffersFromSheet() {
       "offer-4-headline": "Offer 4 Headline",
       "offer-4-terms": "Offer 4 Terms",
       "offer-4-disclaimer": "Offer 4 Disclaimer",
-    "shopping-link-text": "Shopping Link Text"
+      "shopping-link-text": "Shopping Link Text"
     };
 
-    Object.entries(mapping).forEach(([className, sheetKey]) => {
-      const elements = section.querySelectorAll(`.${className}`);
-      if (!elements.length || !data[sheetKey]) return;
-
-      let value = data[sheetKey].value;
-
-      if (className === "lease-payment" && value && !value.includes('$')) {
-        value = `$${value}`;
-      }
-
-      if (className === "apr" && value) {
-        value = value.includes('%') ? value : `${(parseFloat(value) * 100).toFixed(2)}%`;
-      }
-
-      elements.forEach(el => {
-        el.textContent = value;
-      });
+    Object.entries(textMap).forEach(([className, key]) => {
+      const val = data[key]?.value;
+      if (val == null) return;
+      const el = section.querySelector(`.${className}`);
+      if (el) el.textContent = val;
     });
 
-    // shopping links (primary + extras)
-    Object.keys(data).forEach(key => {
-      if (/^Shopping Link(\s\d+)?$/.test(key)) {
-        const num = key.match(/\d+/)?.[0] || "";
-        const className = `shopping-link${num ? '-' + num : ''}`;
-        const el = section.querySelector(`.${className}`);
-        if (el && data[key]) {
-          el.href = data[key].value;
-          el.style.display = "inline-block";
+    const linkMap = { "cta-1": "CTA 1 Link", "cta-2": "CTA 2 Link", "cta-3": "CTA 3 Link" };
+    Object.entries(linkMap).forEach(([className, key]) => {
+      const value = data[key]?.value;
+      if (!value) return;
+      try {
+        const url = new URL(value, location.origin);
+        if (url.protocol === 'http:' || url.protocol === 'https:') {
+          const el = section.querySelector(`.${className}`);
+          if (el) { el.href = url.href; el.style.display = "inline-block"; }
         }
-      }
+      } catch {}
     });
   });
 }
 
 // ---------- BOOTSTRAP ----------
 function waitForOffersToLoad(retries = 20) {
-  if (document.querySelector('.car-offer')) {
-    updateOffersFromSheet();
-  } else if (retries > 0) {
-    setTimeout(() => waitForOffersToLoad(retries - 1), 300);
-  } else {
-    console.warn("car-offer not found after retries — script aborted.");
-  }
+  if (document.querySelector('.car-offer')) updateOffersFromSheet();
+  else if (retries > 0) setTimeout(() => waitForOffersToLoad(retries - 1), 300);
+  else console.warn("car-offer not found after retries — script aborted.");
 }
-
 waitForOffersToLoad();
