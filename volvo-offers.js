@@ -80,7 +80,7 @@ async function updateOffersFromSheet() {
     "Purchase Card": "purchase-card",
     "Buy Card": "buy-card",
     "Bonus Offers": "bonus-offers",
-    "Title Card": "title-card",
+    "Title Card": "acs-title-card",
     "Offer 1 Card": "offer-1-card",
     "Offer 2 Card": "offer-2-card",
     "Offer 3 Card": "offer-3-card",
