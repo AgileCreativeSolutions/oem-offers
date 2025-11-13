@@ -99,7 +99,7 @@ async function updateExclusiveOffers() {
     "cta-text": "CTA Text"
   };
 
-  document.querySelectorAll('.car-offer').forEach(section => {
+  document.querySelectorAll('.psb-exclusive-offer').forEach(section => {
     const modelKey = section.dataset.model;
     const data = modelData[modelKey];
 
@@ -148,12 +148,12 @@ async function updateExclusiveOffers() {
 
 // ---------- BOOTSTRAP ----------
 function waitForOffersToLoad(retries = 20) {
-  if (document.querySelector('.car-offer')) {
+  if (document.querySelector('.psb-exclusive-offer')) {
     updateExclusiveOffers();
   } else if (retries > 0) {
     setTimeout(() => waitForOffersToLoad(retries - 1), 300);
   } else {
-    console.warn("car-offer not found after retries — script aborted.");
+    console.warn("psb-exclusive-offer not found after retries — script aborted.");
   }
 }
 
