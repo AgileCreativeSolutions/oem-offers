@@ -1,4 +1,4 @@
-// ---------- CSV PARSER ----------
+ // ---------- CSV PARSER ----------
 function parseCSV(csv) {
 const rows = [];
 let inQuotes = false,
@@ -164,11 +164,14 @@ const linkMap = {
 
 Object.entries(linkMap).forEach(([className, key]) => {
 const value = data[key]?.value;
-if (!value) return;
+const el = section.querySelector(`.${className}`);
+if (!value || isHide(value)) {
+if (el) el.style.display = "none";
+return;
+}
 try {
 const url = new URL(value, location.origin);
 if (url.protocol === 'http:' || url.protocol === 'https:') {
-const el = section.querySelector(`.${className}`);
 if (el) {
 el.href = url.href;
 el.style.display = "inline-block";
@@ -179,6 +182,19 @@ el.style.display = "inline-block";
 }
 } catch {}
 });
+
+// ---- Call For Details Phone ----
+const phoneVal = data["Call For Details Phone"]?.value;
+const callEl = section.querySelector('.call-for-details');
+if (callEl) {
+if (phoneVal && !isHide(phoneVal)) {
+const digits = phoneVal.replace(/\D/g, '');
+callEl.href = `tel:+1${digits}`;
+callEl.style.display = "inline-block";
+} else {
+callEl.style.display = "none";
+}
+}
 
 });
 }
