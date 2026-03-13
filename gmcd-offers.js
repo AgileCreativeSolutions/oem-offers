@@ -23,7 +23,7 @@ async function fetchAndMergeTabs(tabMap) {
       if (!response.ok) throw new Error(`Failed to fetch: ${url}`);
       const parsed = parseCSV(await response.text());
       if (!parsed.length) continue;
-      const [fields, ...dataRows] = parsed;
+      const [_title, fields, ...dataRows] = parsed; // row 1 is the title, row 2 is the model header
       for (let col = 1; col < fields.length; col++) {
         const modelName = fields[col];
         if (!modelName) continue;
@@ -52,7 +52,10 @@ function isHide(val) {
 // ---------- MAIN ----------
 async function updateOffersFromSheet() {
   const csvTabs = {
-    "GMCD": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTtfafnIhMps9rr7SKUVnfKFKQFAXqp_rD1LXC_Ux9D6blfz_fXm6AJlgzOpXf75la47y4_5Jru61_i/pub?output=csv"
+    // Publish each tab separately in Google Sheets:
+    // File → Share → Publish to web → select tab → CSV → copy URL
+    "Leases":    "https://docs.google.com/spreadsheets/d/e/2PACX-1vSAJKgxkXiZ_X9w0Fh0ViMS3mLvATteQ0tSNtxVVuaZ2EsGJxv_lsZ9QgJN84tKYw/pub?output=csv",
+    "Discounts": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSAJKgxkXiZ_X9w0Fh0ViMS3mLvATteQ0tSNtxVVuaZ2EsGJxv_lsZ9QgJN84tKYw/pub?output=csv&gid=669295447"
   };
 
   const modelData = await fetchAndMergeTabs(csvTabs);
