@@ -22,29 +22,38 @@
   var CONTAINER_ID = 'lag-community-events';
 
   // ── CSV Parser ──────────────────────────────────────────────────────────────
+  // Parses character-by-character so newlines inside quoted fields are preserved
+  // (needed for merged Description cells that contain multi-paragraph content)
   function parseCSV(text) {
     var rows = [];
-    var lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-    for (var i = 0; i < lines.length; i++) {
-      var row = [];
-      var field = '';
-      var inQuotes = false;
-      var line = lines[i];
-      for (var j = 0; j < line.length; j++) {
-        var ch = line[j];
-        if (ch === '"') {
-          if (inQuotes && line[j + 1] === '"') { field += '"'; j++; }
-          else { inQuotes = !inQuotes; }
-        } else if (ch === ',' && !inQuotes) {
-          row.push(field.trim());
-          field = '';
-        } else {
-          field += ch;
-        }
+    var row  = [];
+    var field = '';
+    var inQuotes = false;
+    text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    for (var i = 0; i < text.length; i++) {
+      var ch   = text[i];
+      var next = text[i + 1];
+
+      if (ch === '"') {
+        if (inQuotes && next === '"') { field += '"'; i++; }  // escaped quote
+        else { inQuotes = !inQuotes; }
+      } else if (ch === ',' && !inQuotes) {
+        row.push(field.trim());
+        field = '';
+      } else if (ch === '\n' && !inQuotes) {
+        row.push(field.trim());
+        if (row.some(function (f) { return f !== ''; })) rows.push(row);
+        row   = [];
+        field = '';
+      } else {
+        field += ch;
       }
-      row.push(field.trim());
-      if (row.some(function (f) { return f !== ''; })) rows.push(row);
     }
+    // flush last field/row
+    row.push(field.trim());
+    if (row.some(function (f) { return f !== ''; })) rows.push(row);
+
     return rows;
   }
 
