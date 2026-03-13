@@ -2,22 +2,23 @@
 // Hosted at: https://AgileCreativeSolutions.github.io/oem-offers/lag-community-events.js
 // Data source: Google Sheets → File > Share > Publish to web → CSV
 //
+// Usage: add data-csv attribute to the container div in each dealer's HTML:
+// <div id="lag-community-events" data-csv="https://docs.google.com/...pub?output=csv&gid=XXXX"></div>
+//
 // Spreadsheet format (horizontal — matches RSMH specials pattern):
-//   Row 1:  header  → "Field" | "Event 1" | "Event 2" | ...
-//   Row 2:  field   → "Visibility"    | [val per event]
-//   Row 3:  field   → "Logo URL"      | [val per event]
-//   Row 4:  field   → "Event Title"   | [val per event]
-//   Row 5:  field   → "Subtitle"      | [val per event]
-//   Row 6:  field   → "Detail Line 1" | [val per event]
-//   Row 7:  field   → "Detail Line 2" | [val per event]
-//   Row 8:  field   → "Description 1" | [val per event]
-//   Row 9:  field   → "Description 2" | [val per event]
-//   Row 10: field   → "CTA Text"      | [val per event]
-//   Row 11: field   → "CTA URL"       | [val per event]
+//   Row 1:  header      → "Field" | "Event 1" | "Event 2" | ...
+//   Row 2:  field       → "Visibility"    | [val per event]
+//   Row 3:  field       → "Logo URL"      | [val per event]
+//   Row 4:  field       → "Event Title"   | [val per event]
+//   Row 5:  field       → "Subtitle"      | [val per event]
+//   Row 6:  field       → "Detail Line 1" | [val per event]
+//   Row 7:  field       → "Detail Line 2" | [val per event]
+//   Row 8:  field       → "Description"   | [val per event]
+//   Row 9:  field       → "CTA Text"      | [val per event]
+//   Row 10: field       → "CTA URL"       | [val per event]
 
 (function () {
 
-  var CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSmSmJVbA_aMnFqwrWFIW48J4hV38Ei-dMOcbiwMVGODzkTGRDCj1O5zeDCKn2KUQ/pub?output=csv&gid=575616754';
   var CONTAINER_ID = 'lag-community-events';
 
   // ── CSV Parser ──────────────────────────────────────────────────────────────
@@ -47,16 +48,13 @@
     return rows;
   }
 
-  // ── Transpose CSV into field map ────────────────────────────────────────────
-  // Converts horizontal format (fields as rows) into a lookup by field name.
-  // fieldMap["Event Title"] = ["Fuel Her Fire Auction Gala", "17th Annual...", ...]
-  // Index 0 = Event 1, index 1 = Event 2, etc.
+  // ── Build field map from transposed CSV ─────────────────────────────────────
   function buildFieldMap(rows) {
     var map = {};
-    for (var i = 1; i < rows.length; i++) { // skip header row
+    for (var i = 1; i < rows.length; i++) {
       var fieldName = rows[i][0] || '';
       if (fieldName) {
-        map[fieldName] = rows[i].slice(1); // drop col A, keep event values
+        map[fieldName] = rows[i].slice(1);
       }
     }
     return map;
@@ -75,17 +73,21 @@
     var subtitle   = get('Subtitle');
     var detail1    = get('Detail Line 1');
     var detail2    = get('Detail Line 2');
-    var desc1      = get('Description 1');
-    var desc2      = get('Description 2');
+    var desc       = get('Description');
     var ctaText    = get('CTA Text');
     var ctaUrl     = get('CTA URL');
 
     if (visibility === 'hide' || !title) return null;
 
+    // Split description on double newline into separate paragraphs
+    var descParas = desc.split(/\n\n+/).filter(function(p) { return p.trim(); });
+    var descHtml  = descParas.map(function(p) {
+      return '<p class="acs-lh-5 acs-mb-2">' + p.trim() + '</p>';
+    }).join('\n');
+
     var logoHtml    = logoUrl  ? '<img src="' + logoUrl + '" class="acs-img-full-width acs-ma acs-event-logo" title="" alt="">' : '';
     var detail1Html = detail1  ? '<p class="acs-lh-4 acs-mb-1">' + detail1 + '</p>' : '';
     var detail2Html = detail2  ? '<p class="acs-lh-4 acs-mb-4">' + detail2 + '</p>' : '';
-    var desc2Html   = desc2    ? '<p class="acs-lh-5 acs-mb-2">' + desc2   + '</p>' : '';
     var ctaHtml     = (ctaText && ctaUrl) ? '<p class="acs-mb-2 acs-lh-5"><a target="_blank" href="' + ctaUrl + '" class="acs-link-accent">' + ctaText + '</a></p>' : '';
     var subtitleClass = (!detail1 && !detail2)
       ? 'acs-accent acs-bold acs-lh-4 acs-large acs-mb-4'
@@ -102,8 +104,7 @@
       detail1Html,
       detail2Html,
       '<hr>',
-      '<p class="acs-lh-5 acs-mb-2">' + desc1 + '</p>',
-      desc2Html,
+      descHtml,
       ctaHtml,
       '</div>',
       '</div>'
@@ -111,16 +112,13 @@
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
-  function render(csvText) {
-    var container = document.getElementById(CONTAINER_ID);
-    if (!container) return;
-
+  function render(csvText, container) {
     var rows = parseCSV(csvText);
     if (rows.length < 2) return;
 
-    var fieldMap   = buildFieldMap(rows);
-    var numEvents  = (rows[1] ? rows[1].length - 1 : 0); // total columns minus col A
-    var blocks     = [];
+    var fieldMap  = buildFieldMap(rows);
+    var numEvents = (rows[1] ? rows[1].length - 1 : 0);
+    var blocks    = [];
 
     for (var i = 0; i < numEvents; i++) {
       var block = buildEvent(fieldMap, i);
@@ -133,15 +131,20 @@
 
   // ── Fetch ───────────────────────────────────────────────────────────────────
   function init() {
-    if (!CSV_URL) {
-      console.warn('[LAG Events] CSV_URL not set in lag-community-events.js');
+    var container = document.getElementById(CONTAINER_ID);
+    if (!container) return;
+
+    var csvUrl = container.getAttribute('data-csv');
+    if (!csvUrl) {
+      console.warn('[LAG Events] No data-csv attribute found on #lag-community-events');
       return;
     }
+
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', CSV_URL, true);
+    xhr.open('GET', csvUrl, true);
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4 && xhr.status === 200) {
-        render(xhr.responseText);
+        render(xhr.responseText, container);
       }
     };
     xhr.send();
