@@ -49,7 +49,10 @@ async function updateOffersFromSheet() {
         if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
         const parsed = parseCSV(await response.text());
         if (!parsed.length) throw new Error('Empty CSV');
-        const [fields, ...dataRows] = parsed;
+        const headerIdx = parsed.findIndex(row => row[0] === 'Field');
+        if (headerIdx === -1) throw new Error('Header row not found');
+        const fields = parsed[headerIdx];
+        const dataRows = parsed.slice(headerIdx + 1);
         for (let col = 1; col < fields.length; col++) {
             const modelName = fields[col];
             if (!modelName) continue;
@@ -166,6 +169,10 @@ async function updateOffersFromSheet() {
             return;
         }
 
+        // Show section (CSS hides all .car-offer by default to prevent flash)
+        section.style.display = '';
+        section.removeAttribute('aria-hidden');
+
         Object.entries(hideMap).forEach(([label, className]) => {
             if (isHide(data[label]?.value)) {
                 const el = section.querySelector(`.${className}`);
@@ -198,22 +205,23 @@ async function updateOffersFromSheet() {
             } catch {}
         });
 
-        // Collect this section for anchor nav if it has an id and a nav label
+        // Collect for anchor nav — only if section has an id and a non-empty label
         const sectionId = section.id;
-        const navLabel = data['Nav Label']?.value || data['Model Title']?.value;
+        const navLabel = (data['Nav Label']?.value || data['Model Title']?.value || '').trim();
         if (sectionId && navLabel) {
             visibleAnchors.push({ id: sectionId, label: navLabel });
         }
     });
 
     // ---------- REBUILD ANCHOR NAVS ----------
+    // Targets any element with data-nav="links" — add this attribute to the
+    // <span> wrapping the anchor links in both the top nav and bottom nav bar.
     if (visibleAnchors.length) {
         const navHTML = visibleAnchors
             .map(a => `<a href="#${a.id}" class="acs-accent"> ${a.label}</a>`)
             .join(' | ');
-        document.querySelectorAll('.acs-anchors').forEach(nav => {
-            const inner = nav.querySelector('.acs-twelve');
-            if (inner) inner.innerHTML = navHTML;
+        document.querySelectorAll('[data-nav="links"]').forEach(el => {
+            el.innerHTML = navHTML;
         });
     }
 }
