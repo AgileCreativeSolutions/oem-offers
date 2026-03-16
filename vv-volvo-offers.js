@@ -1,6 +1,6 @@
 // ============================================================
 // Volvo Village — Volvo Specials
-// https://AgileCreativeSolutions.github.io/oem-offers/vv-volvo-offers.js
+// https://AgileCreativeSolutions.github.io/oem-offers/vv-volvo.js
 // Sheet tab: VV (gid=726262632)
 // ============================================================
 
@@ -144,6 +144,7 @@ async function updateOffersFromSheet() {
     };
 
     const pageType = getPageType();
+    const visibleAnchors = [];
 
     document.querySelectorAll('.car-offer').forEach(section => {
         const modelKey = section.dataset.model;
@@ -196,7 +197,25 @@ async function updateOffersFromSheet() {
                 }
             } catch {}
         });
+
+        // Collect this section for anchor nav if it has an id and a nav label
+        const sectionId = section.id;
+        const navLabel = data['Nav Label']?.value || data['Model Title']?.value;
+        if (sectionId && navLabel) {
+            visibleAnchors.push({ id: sectionId, label: navLabel });
+        }
     });
+
+    // ---------- REBUILD ANCHOR NAVS ----------
+    if (visibleAnchors.length) {
+        const navHTML = visibleAnchors
+            .map(a => `<a href="#${a.id}" class="acs-accent"> ${a.label}</a>`)
+            .join(' | ');
+        document.querySelectorAll('.acs-anchors').forEach(nav => {
+            const inner = nav.querySelector('.acs-twelve');
+            if (inner) inner.innerHTML = navHTML;
+        });
+    }
 }
 
 // ---------- BOOTSTRAP ----------
