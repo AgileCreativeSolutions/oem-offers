@@ -52,7 +52,7 @@ function isHide(val) {
 // ---------- MAIN ----------
 async function updateOffersFromSheet() {
   const csvTabs = {
-    "JT": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQlYvLHwLTTHp0fsF6ndc2aCVN0DD8UpfsUV2TJToCx5K1We86QVgcsgCTcJLQLwU4ZAKVeT0YlDWyR/pub?output=csv"
+    "JT": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSVlDeBDpVWbm6feb9LwuQuX6OpRmi0ktrKnR5Qe4BBaFZBPCqCCHwAm30uLlAv-g/pub?output=csv&gid=901719774"
   };
 
   const modelData = await fetchAndMergeTabs(csvTabs);
