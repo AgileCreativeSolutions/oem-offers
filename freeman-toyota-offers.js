@@ -57,7 +57,7 @@ function hide(el) { if (el) el.style.display = 'none'; }
 
 // ---------- MAIN ----------
 async function updateOffersFromSheet() {
-  const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSpSc6q-axazVUnOMSmX6Pl2p1Y1bXPUXtoVqqYq6WlogWm2mLxQFWqiJ4huUIRk3Xh5d4t75g9FUTR/pub?output=csv';
+  const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR66gyd3JHswke45HRpKTsM9IilQ0ENgLT3jHd4wHSaWbmINCaUc0z5pqXNATjIPg/pub?output=csv';
   const modelData = await fetchSheet(SHEET_URL);
 
   document.querySelectorAll('.car-offer').forEach(section => {
