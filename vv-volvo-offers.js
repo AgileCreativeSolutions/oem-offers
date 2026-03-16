@@ -1,6 +1,6 @@
 // ============================================================
 // Volvo Village — Volvo Specials
-// https://AgileCreativeSolutions.github.io/oem-offers/vv-volvo.js
+// https://AgileCreativeSolutions.github.io/oem-offers/vv-volvo-offers.js
 // Sheet tab: VV (gid=726262632)
 // ============================================================
 
@@ -41,7 +41,7 @@ function isHide(val) {
 
 // ---------- MAIN ----------
 async function updateOffersFromSheet() {
-    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9hPn5l-8ASjL1236ah9LJf4VBi8QSw531JhWp7-7PMSixmI9xMJmqHQ_SQwYwBODAnV224CEhrdmv/pub?output=csv&gid=726262632';
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTEWsgxFFx00uATI45EdH8jcE8cjwD8yG0r2pbZv_5Ra__-cExJEEDdNNmiQrQBT2dXYcqoACJHp4pX/pub?output=csv';
 
     let modelData = {};
     try {
