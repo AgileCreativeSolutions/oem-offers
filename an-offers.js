@@ -231,8 +231,8 @@
     var container = document.querySelector('[data-an-specials]');
     if (!container) return;
 
-    var csvUrl = container.getAttribute('data-csv');
-    if (!csvUrl) return;
+    
+    var csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQh63vcSy7xSbs297KhdB4jRA-WfkSFRNs2iDbUILiVqPRq-2jl8G3-GDihmtk0-8MXFuN-6Wm88Qr_/pub?output=csv';
 
     fetch(csvUrl)
       .then(function (r) { return r.text(); })
