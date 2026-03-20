@@ -199,7 +199,7 @@
     if (!grid) return;
 
     // Lease slots: col indices 2–21  (col 0 = labels, col 1 = CPO)
-    for (var col = 2; col <= 21; col++) {
+    for (var col = 2; col <= 16; col++) {
       var visibility = val(rows, R.VISIBILITY, col).toLowerCase();
       if (visibility === 'hide') continue;
 
