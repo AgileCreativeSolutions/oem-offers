@@ -93,7 +93,7 @@
     var ctaText    = val(rows, R.CTA_TEXT,    colIndex);
     var ctaLink    = val(rows, R.CTA_LINK,    colIndex);
     var altText    = year + ' ' + model + ' ' + trim;
-    var fnTag      = footnoteNum !== '' ? ' <sup>[' + footnoteNum + ']</sup>' : '';
+    var fnTag      = footnoteNum !== '' ? '<sup>[' + footnoteNum + ']</sup>' : '';
 
     return (
       '<div class="acs-six-md acs-four-xl acs-columns acs-text-center acs-flex acs-my-2">' +
@@ -150,7 +150,7 @@
     var ctaText    = val(rows, R.CTA_TEXT,   1);
     var ctaLink    = val(rows, R.CTA_LINK,   1);
     var disclaimer = val(rows, R.DISCLAIMER, 1);
-    var fnTag      = footnoteN ? ' <sup>[' + footnoteN + ']</sup>' : '';
+    var fnTag      = footnoteN ? '<sup>[' + footnoteN + ']</sup>' : '';
 
     var titleEl   = cpoSection.querySelector('[data-cpo-title]');
     var offerEl   = cpoSection.querySelector('[data-cpo-offer]');
