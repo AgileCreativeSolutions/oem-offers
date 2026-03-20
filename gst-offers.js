@@ -178,24 +178,27 @@
     leaseSectionSub:     'No money down. No hidden fees. No kidding.',
     incBarTitle:         'Every Lease Includes:',
     incBarSub:           'All items at no added cost.',
-    incTags: [
-      '✓ Complimentary Maintenance — Full Lease',
-      '✓ 12,000 Miles / Year',
-      '✓ $0 Security Deposit',
-      '✓ Dealer Documentation Fee',
-      '✓ Filing Fee',
-      '✓ Lease Acquisition Fee',
-      '✓ Full Tank of Gas',
-    ],
-    navLabel:              'Specials',
-    navTripleZero:         'Triple Zero Sale',
-    navGettelsGotIt:       "Gettel's Got It!",
-    navZeroDownLeases:     '$0 Down Leases',
-    navSpecialPrograms:    'Special Programs',
+    navLabel:               'Specials',
+    navTripleZero:          'Triple Zero Sale',
+    navGettelsGotIt:        "Gettel's Got It!",
+    navZeroDownLeases:      '$0 Down Leases',
+    navSpecialPrograms:     'Special Programs',
     programsSectionEyebrow: 'Additional Benefits',
     programsSectionTitle:   'Special Programs',
     programsSectionSub:     'Even more ways to save with great benefits at Gettel Stadium Toyota.',
   };
+
+  // incTags translated separately to avoid delimiter mangling in the main UI batch
+  const INC_TAGS_EN = [
+    '✓ Complimentary Maintenance — Full Lease',
+    '✓ 12,000 Miles / Year',
+    '✓ $0 Security Deposit',
+    '✓ Dealer Documentation Fee',
+    '✓ Filing Fee',
+    '✓ Lease Acquisition Fee',
+    '✓ Full Tank of Gas',
+  ];
+  let incTagsTranslated = INC_TAGS_EN;
 
   let UI = { ...UI_EN };
 
@@ -203,24 +206,34 @@
     if (!IS_ES) return;
     const label = document.querySelector('.sidebar-nav-label');
     if (label) label.textContent = t('navLabel');
-    const links = document.querySelectorAll('.sidebar-nav a');
     const map = {
-      'triple-zero':     'navTripleZero',
-      'gettels-got-it':  'navGettelsGotIt',
-      'zero-down-leases':'navZeroDownLeases',
-      'programs':        'navSpecialPrograms',
+      'triple-zero':      'navTripleZero',
+      'gettels-got-it':   'navGettelsGotIt',
+      'zero-down-leases': 'navZeroDownLeases',
+      'programs':         'navSpecialPrograms',
     };
-    links.forEach(l => {
+    document.querySelectorAll('.sidebar-nav a').forEach(l => {
       const id  = l.getAttribute('href').replace('#', '');
       const key = map[id];
       if (!key) return;
-      const num = l.querySelector('.nav-num');
-      l.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = t(key); });
+      // Preserve the .nav-num span, only replace the trailing text node
+      const num  = l.querySelector('.nav-num');
+      const text = l.querySelector('.nav-text');
+      if (text) {
+        text.textContent = t(key);
+      } else {
+        // Find and replace just the trailing text node
+        l.childNodes.forEach(n => {
+          if (n.nodeType === 3 && n.textContent.trim()) n.textContent = t(key);
+        });
+      }
     });
   }
 
   async function translateUI() {
     if (!IS_ES) return;
+    // Translate incTags as a clean separate batch
+    incTagsTranslated = await translateBatch([...INC_TAGS_EN]);
     const keys   = Object.keys(UI_EN);
     const flat   = keys.map(k => Array.isArray(UI_EN[k]) ? UI_EN[k].join(' ||| ') : UI_EN[k]);
     const xlated = await translateBatch(flat);
@@ -352,7 +365,7 @@
     if (!active.length) { el.style.display = 'none'; return; }
     let models = active.map(v => v['Model']);
     if (IS_ES) models = await translateBatch(models);
-    const incTags = t('incTags').map(tag => `<span class="inc-tag">${esc(tag)}</span>`).join('');
+    const incTags = incTagsTranslated.map(tag => `<span class="inc-tag">${esc(tag)}</span>`).join('');
     const cards = active.map((v, i) => {
       const maint = (v['Maint. Badge'] || '').toLowerCase() === 'yes';
       const flip  = (v['Flip Image'] || '').toLowerCase() === 'yes';
