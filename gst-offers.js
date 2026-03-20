@@ -24,7 +24,7 @@
   const ROOT_ID   = 'gst-specials';
   const PUBLISHED_ID = '2PACX-1vTm6S7twOLJ_BBdHV6ciQ0hh2gCE6nvx7NbYOheQGj4UFh2Cndgcm2sY33gqhQa8ysbFxEXX1Xx3MSJ';
   const CACHE_TTL = 24 * 60 * 60 * 1000;
-  const IS_ES = /spanish-specials-test-page/i.test(window.location.pathname);
+  const IS_ES = /ofertas-especiales|spanish-specials-test-page/i.test(window.location.pathname);
 
   const TABS = {
     tz:       '1978579435',
@@ -187,9 +187,37 @@
       '✓ Lease Acquisition Fee',
       '✓ Full Tank of Gas',
     ],
+    navLabel:              'Specials',
+    navTripleZero:         'Triple Zero Sale',
+    navGettelsGotIt:       "Gettel's Got It!",
+    navZeroDownLeases:     '$0 Down Leases',
+    navSpecialPrograms:    'Special Programs',
+    programsSectionEyebrow: 'Additional Benefits',
+    programsSectionTitle:   'Special Programs',
+    programsSectionSub:     'Even more ways to save with great benefits at Gettel Stadium Toyota.',
   };
 
   let UI = { ...UI_EN };
+
+  function translateSidebar() {
+    if (!IS_ES) return;
+    const label = document.querySelector('.sidebar-nav-label');
+    if (label) label.textContent = t('navLabel');
+    const links = document.querySelectorAll('.sidebar-nav a');
+    const map = {
+      'triple-zero':     'navTripleZero',
+      'gettels-got-it':  'navGettelsGotIt',
+      'zero-down-leases':'navZeroDownLeases',
+      'programs':        'navSpecialPrograms',
+    };
+    links.forEach(l => {
+      const id  = l.getAttribute('href').replace('#', '');
+      const key = map[id];
+      if (!key) return;
+      const num = l.querySelector('.nav-num');
+      l.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = t(key); });
+    });
+  }
 
   async function translateUI() {
     if (!IS_ES) return;
@@ -469,23 +497,45 @@
     const active = offers.filter(isVisible);
     if (!active.length) { el.style.display = 'none'; return; }
 
-    const cards = active.map(o => {
-      const listItems = [o['List Item 1'], o['List Item 2'], o['List Item 3']].filter(Boolean);
+    let eyebrows = active.map(o => o['Eyebrow']);
+    let titles   = active.map(o => o['Title']);
+    let bodies   = active.map(o => o['Body']);
+    let li1s     = active.map(o => o['List Item 1']);
+    let li2s     = active.map(o => o['List Item 2']);
+    let li3s     = active.map(o => o['List Item 3']);
+    let ctas     = active.map(o => o['CTA Label']);
+    let discls   = active.map(o => o['Disclaimer']);
+
+    if (IS_ES) {
+      [eyebrows, titles, bodies, li1s, li2s, li3s, ctas, discls] = await Promise.all([
+        translateBatch(eyebrows),
+        translateBatch(titles),
+        translateBatch(bodies),
+        translateBatch(li1s),
+        translateBatch(li2s),
+        translateBatch(li3s),
+        translateBatch(ctas),
+        translateBatch(discls),
+      ]);
+    }
+
+    const cards = active.map((o, i) => {
+      const listItems = [li1s[i], li2s[i], li3s[i]].filter(Boolean);
       const isPrimary = (o['CTA Style'] || 'primary').toLowerCase() !== 'outline';
       return `
         <div class="promo-card">
           ${o['Image URL'] ? `<img src="${esc(o['Image URL'])}" alt="${esc(o['Image Alt'])}">` : ''}
           <div class="promo-card-body">
-            <div class="section-eyebrow">${esc(o['Eyebrow'])}</div>
-            <div class="promo-title">${esc(o['Title'])}</div>
+            <div class="section-eyebrow">${esc(eyebrows[i])}</div>
+            <div class="promo-title">${esc(titles[i])}</div>
             <div class="promo-desc">
-              ${o['Body'] ? esc(o['Body']) : ''}
+              ${bodies[i] ? esc(bodies[i]) : ''}
               ${listItems.length ? `<ul style="margin-top:6px;">${listItems.map(li => `<li>${esc(li)}</li>`).join('')}</ul>` : ''}
             </div>
-            <a href="${esc(o['CTA URL'])}" class="btn ${isPrimary ? 'btn-primary' : 'btn-outline'}">${esc(o['CTA Label'])}</a>
-            ${o['Disclaimer'] ? `<details class="disclaimer" style="margin-top:10px;">
-              <summary>Disclaimer</summary>
-              <p>${esc(o['Disclaimer'])}</p>
+            <a href="${esc(o['CTA URL'])}" class="btn ${isPrimary ? 'btn-primary' : 'btn-outline'}">${esc(ctas[i])}</a>
+            ${discls[i] ? `<details class="disclaimer" style="margin-top:10px;">
+              <summary>${esc(t('disclaimerToggle'))}</summary>
+              <p>${esc(discls[i])}</p>
             </details>` : ''}
           </div>
         </div>`;
@@ -495,9 +545,9 @@
       <div id="programs" class="section section-alt acs-oem-brand">
         <span class="scroll-target"></span>
         <div class="section-header">
-          <p class="section-eyebrow">Additional Benefits</p>
-          <h2 class="section-title acs-bold">Special Programs</h2>
-          <p class="section-sub">Even more ways to save with great benefits at Gettel Stadium Toyota.</p>
+          <p class="section-eyebrow">${esc(t('programsSectionEyebrow'))}</p>
+          <h2 class="section-title acs-bold">${esc(t('programsSectionTitle'))}</h2>
+          <p class="section-sub">${esc(t('programsSectionSub'))}</p>
         </div>
         <div class="promo-grid">${cards}</div>
       </div>`;
@@ -530,6 +580,7 @@
       ]);
 
       await translateUI();
+      translateSidebar();
 
       await Promise.all([
         IS_USED ? Promise.resolve() : buildTripleZero(csvToOffers(tzCsv),         tzEl),
