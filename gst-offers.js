@@ -367,6 +367,8 @@
   }
 
   async function buildLeases(offers, el) {
+    console.log('[gst-specials] Lease field names:', Object.keys(offers[0] || {}));
+    console.log('[gst-specials] Section Disclaimer value:', (offers.find(o => o['Section Disclaimer']) || {})['Section Disclaimer']);
     const sectionDisclaimer = (offers.find(o => o['Section Disclaimer']) || {})['Section Disclaimer'] || '';
     const active = offers.filter(isVisible);
     if (!active.length) { el.style.display = 'none'; return; }
