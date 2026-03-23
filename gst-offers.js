@@ -367,12 +367,28 @@
   }
 
   async function buildLeases(offers, el) {
-const sectionDisclaimer = (offers.find(o => o['Section Disclaimer']) || {})['Section Disclaimer'] || '';
+    const sectionDisclaimer = (offers.find(o => o['Section Disclaimer']) || {})['Section Disclaimer'] || '';
     const active = offers.filter(isVisible);
     if (!active.length) { el.style.display = 'none'; return; }
+
+    // Build disclaimer HTML as a plain string — no nested template literals
+    let leaseDisclHtml = '';
+    if (sectionDisclaimer) {
+      let bulletList = '';
+      if (active.some(o => o['Model Number'] || o['Selling Price'])) {
+        const items = active.map(o => {
+          const modelNum  = o['Model Number']  ? ' (Model ' + esc(o['Model Number'])  + ')' : '';
+          const sellPrice = o['Selling Price']  ? ' \u00b7 ' + esc(o['Selling Price']) : '';
+          return '<li>' + esc(o['Model']) + modelNum + ': ' + esc(o['Lease Price']) + '/mo with ' + esc(o['Due at Signing']) + ' down or ' + esc(o['$0 Down Price']) + '/mo $0 down' + sellPrice + '</li>';
+        });
+        bulletList = '<ul>' + items.join('') + '</ul>';
+      }
+      leaseDisclHtml = '<details class="disclaimer" style="margin-top:16px;"><summary>$0 Down Lease Offers \u2014 Disclaimer</summary><p>' + esc(sectionDisclaimer) + '</p>' + bulletList + '</details>';
+    }
+
     let models = active.map(v => v['Model']);
     if (IS_ES) models = await translateBatch(models);
-    const incTags = incTagsTranslated.map(tag => `<span class="inc-tag">${esc(tag)}</span>`).join('');
+    const incTags = t('incTags').map(tag => '<span class="inc-tag">' + esc(tag) + '</span>').join('');
     const cards = active.map((v, i) => {
       const maint = (v['Maint. Badge'] || '').toLowerCase() === 'yes';
       const flip  = (v['Flip Image'] || '').toLowerCase() === 'yes';
@@ -415,6 +431,7 @@ const sectionDisclaimer = (offers.find(o => o['Section Disclaimer']) || {})['Sec
           <div class="includes-tags">${incTags}</div>
         </div>
         <div class="card-grid">${cards}</div>
+        ${leaseDisclHtml}
       </div>`;
   }
 
