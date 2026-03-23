@@ -388,7 +388,7 @@
 
     let models = active.map(v => v['Model']);
     if (IS_ES) models = await translateBatch(models);
-    const incTags = t('incTags').map(tag => '<span class="inc-tag">' + esc(tag) + '</span>').join('');
+    const incTags = incTagsTranslated.map(tag => '<span class="inc-tag">' + esc(tag) + '</span>').join('');
     const cards = active.map((v, i) => {
       const maint = (v['Maint. Badge'] || '').toLowerCase() === 'yes';
       const flip  = (v['Flip Image'] || '').toLowerCase() === 'yes';
