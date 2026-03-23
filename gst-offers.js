@@ -257,9 +257,10 @@
   // ── Section builders ───────────────────────────────────────────────
 
   async function buildTripleZero(offers, el) {
-    const sectionDisclaimer = (offers.find(o => o['Section Disclaimer']) || {})['Section Disclaimer'] || '';
+    let sectionDisclaimer = (offers.find(o => o['Section Disclaimer']) || {})['Section Disclaimer'] || '';
     const active = offers.filter(isVisible);
     if (!active.length) { el.style.display = 'none'; return; }
+    if (IS_ES && sectionDisclaimer) [sectionDisclaimer] = await translateBatch([sectionDisclaimer]);
     let models = active.map(v => v['Model']);
     if (IS_ES) models = await translateBatch(models);
     const cards = active.map((v, i) => {
@@ -367,9 +368,10 @@
   }
 
   async function buildLeases(offers, el) {
-    const sectionDisclaimer = (offers.find(o => o['Section Disclaimer']) || {})['Section Disclaimer'] || '';
+    let sectionDisclaimer = (offers.find(o => o['Section Disclaimer']) || {})['Section Disclaimer'] || '';
     const active = offers.filter(isVisible);
     if (!active.length) { el.style.display = 'none'; return; }
+    if (IS_ES && sectionDisclaimer) [sectionDisclaimer] = await translateBatch([sectionDisclaimer]);
 
     // Build disclaimer HTML as a plain string — no nested template literals
     let leaseDisclHtml = '';
