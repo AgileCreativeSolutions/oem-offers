@@ -27,11 +27,11 @@
   const IS_ES = /ofertas-especiales|spanish-specials-test-page/i.test(window.location.pathname);
 
   const TABS = {
-    tz:       '1978579435',
-    gg:       '1423480928',
-    lease:    '1695098123',
-    used:     '1694008757',
-    programs: '561540542',
+    tz:       '1364600356',
+    gg:       '963178167',
+    lease:    '94483649',
+    used:     '1759469983',
+    programs: '1977351644',
   };
 
   // ── CSV fetch ──────────────────────────────────────────────────────
@@ -317,6 +317,11 @@
           </div>
         </div>
         <div class="card-grid">${cards}</div>
+        ${offers[0] && offers[0]['Section Disclaimer'] ? `
+        <details class="disclaimer" style="margin-top:16px;">
+          <summary>Triple Zero Sale — Disclaimer</summary>
+          <p>${esc(offers[0]['Section Disclaimer'])}</p>
+        </details>` : ''}
       </div>`;
   }
 
