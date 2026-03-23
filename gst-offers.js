@@ -376,7 +376,7 @@
     if (sectionDisclaimer) {
       let bulletList = '';
       if (active.some(o => o['Model Number'] || o['Selling Price'])) {
-        const items = active.map(o => {
+        const items = active.filter(o => o['Model'] && o['Lease Price']).map(o => {
           const modelNum  = o['Model Number']  ? ' (Model ' + esc(o['Model Number'])  + ')' : '';
           const sellPrice = o['Selling Price']  ? ' \u00b7 ' + esc(o['Selling Price']) : '';
           return '<li>' + esc(o['Model']) + modelNum + ': ' + esc(o['Lease Price']) + '/mo with ' + esc(o['Due at Signing']) + ' down or ' + esc(o['$0 Down Price']) + '/mo $0 down' + sellPrice + '</li>';
