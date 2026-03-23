@@ -257,6 +257,7 @@
   // ── Section builders ───────────────────────────────────────────────
 
   async function buildTripleZero(offers, el) {
+    const sectionDisclaimer = (offers.find(o => o['Section Disclaimer']) || {})['Section Disclaimer'] || '';
     const active = offers.filter(isVisible);
     if (!active.length) { el.style.display = 'none'; return; }
     let models = active.map(v => v['Model']);
@@ -317,10 +318,10 @@
           </div>
         </div>
         <div class="card-grid">${cards}</div>
-        ${offers[0] && offers[0]['Section Disclaimer'] ? `
+        ${sectionDisclaimer ? `
         <details class="disclaimer" style="margin-top:16px;">
           <summary>Triple Zero Sale — Disclaimer</summary>
-          <p>${esc(offers[0]['Section Disclaimer'])}</p>
+          <p>${esc(sectionDisclaimer)}</p>
         </details>` : ''}
       </div>`;
   }
@@ -366,6 +367,7 @@
   }
 
   async function buildLeases(offers, el) {
+    const sectionDisclaimer = (offers.find(o => o['Section Disclaimer']) || {})['Section Disclaimer'] || '';
     const active = offers.filter(isVisible);
     if (!active.length) { el.style.display = 'none'; return; }
     let models = active.map(v => v['Model']);
@@ -611,6 +613,7 @@
       // All sections rendered — signal scroll spy to recalculate
       requestAnimationFrame(() => requestAnimationFrame(() => {
         document.dispatchEvent(new CustomEvent('gst:ready'));
+        if (IS_ES) document.dispatchEvent(new CustomEvent('gst:translated'));
       }));
 
     } catch (err) {
