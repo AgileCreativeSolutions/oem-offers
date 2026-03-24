@@ -614,6 +614,61 @@
       root.appendChild(usedEl);
     } else {
       root.append(tzEl, ggEl, leaseEl, programsEl);
+      // Show skeleton placeholders while data loads
+      tzEl.innerHTML = `
+      <div class="skeleton-section">
+        <div class="section-inner">
+          <div class="skel-header">
+            <div class="skel skel-eyebrow"></div>
+            <div class="skel skel-title" style="margin-top:8px;"></div>
+            <div class="skel skel-sub" style="margin-top:8px;"></div>
+          </div>
+          <div class="skel skel-bar"></div>
+          <div class="skel-grid">
+            ${Array(7).fill('<div class="skel-card"><div class="skel-card-img"><div class="skel"></div></div><div class="skel-card-body"><div class="skel" style="height:12px;width:40%;"></div><div class="skel" style="height:18px;width:70%;"></div><div class="skel" style="height:48px;"></div><div class="skel" style="height:32px;margin-top:10px;"></div><div class="skel" style="height:32px;"></div></div></div>').join('')}
+          </div>
+        </div>
+      </div>`;
+      ggEl.innerHTML = `
+      <div class="skeleton-section skeleton-alt">
+        <div class="section-inner">
+          <div class="skel-header">
+            <div class="skel skel-eyebrow"></div>
+            <div class="skel skel-title" style="margin-top:8px;"></div>
+            <div class="skel skel-sub" style="margin-top:8px;"></div>
+          </div>
+          <div class="skel-promo-grid">
+            ${Array(3).fill('<div class="skel-promo-card"><div class="skel-promo-img"><div class="skel"></div></div><div class="skel-promo-body"><div class="skel" style="height:18px;width:80%;"></div><div class="skel" style="height:12px;"></div><div class="skel" style="height:12px;width:90%;"></div><div class="skel" style="height:34px;margin-top:12px;"></div></div></div>').join('')}
+          </div>
+        </div>
+      </div>`;
+      leaseEl.innerHTML = `
+      <div class="skeleton-section skeleton-alt">
+        <div class="section-inner">
+          <div class="skel-header">
+            <div class="skel skel-eyebrow"></div>
+            <div class="skel skel-title" style="margin-top:8px;"></div>
+            <div class="skel skel-sub" style="margin-top:8px;"></div>
+          </div>
+          <div class="skel skel-bar"></div>
+          <div class="skel-grid">
+            ${Array(7).fill('<div class="skel-card"><div class="skel-card-img"><div class="skel"></div></div><div class="skel-card-body"><div class="skel" style="height:12px;width:40%;"></div><div class="skel" style="height:18px;width:70%;"></div><div class="skel" style="height:20px;width:90%;margin-bottom:4px;"></div><div class="skel" style="height:60px;"></div><div class="skel" style="height:32px;margin-top:10px;"></div><div class="skel" style="height:32px;"></div></div></div>').join('')}
+          </div>
+        </div>
+      </div>`;
+      programsEl.innerHTML = `
+      <div class="skeleton-section">
+        <div class="section-inner">
+          <div class="skel-header">
+            <div class="skel skel-eyebrow"></div>
+            <div class="skel skel-title" style="margin-top:8px;"></div>
+            <div class="skel skel-sub" style="margin-top:8px;"></div>
+          </div>
+          <div class="skel-promo-grid">
+            ${Array(2).fill('<div class="skel-promo-card"><div class="skel-promo-img"><div class="skel"></div></div><div class="skel-promo-body"><div class="skel" style="height:18px;width:80%;"></div><div class="skel" style="height:12px;"></div><div class="skel" style="height:12px;width:90%;"></div><div class="skel" style="height:34px;margin-top:12px;"></div></div></div>').join('')}
+          </div>
+        </div>
+      </div>`;
     }
 
     try {
