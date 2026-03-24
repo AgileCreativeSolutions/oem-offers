@@ -262,7 +262,7 @@
     if (!active.length) { el.style.display = 'none'; return; }
     if (IS_ES && sectionDisclaimer) [sectionDisclaimer] = await translateBatch([sectionDisclaimer]);
     let models = active.map(v => v['Model']);
-    if (IS_ES) models = await translateBatch(models);
+
     const cards = active.map((v, i) => {
       const flip = (v['Flip Image'] || '').toLowerCase() === 'yes';
       return `
@@ -288,6 +288,7 @@
     el.innerHTML = `
       <div id="triple-zero" class="section section-alt acs-oem-brand">
         <span class="scroll-target"></span>
+        <div class="section-inner">
         <div class="section-header">
           <p class="section-eyebrow">${esc(t('tzSectionEyebrow'))}</p>
           <h2 class="section-title acs-bold">${esc(t('tzSectionTitle'))}</h2>
@@ -358,12 +359,14 @@
     el.innerHTML = `
       <div id="gettels-got-it" class="section section-gray acs-oem-brand">
         <span class="scroll-target"></span>
+        <div class="section-inner">
         <div class="section-header">
           <p class="section-eyebrow">${esc(t('ggSectionEyebrow'))}</p>
           <h2 class="section-title acs-bold">${esc(t('ggSectionTitle'))}</h2>
           <p class="section-sub">${esc(t('ggSectionSub'))}</p>
         </div>
         <div class="promo-grid">${cards}</div>
+        </div>
       </div>`;
   }
 
@@ -389,7 +392,7 @@
     }
 
     let models = active.map(v => v['Model']);
-    if (IS_ES) models = await translateBatch(models);
+
     const incTags = incTagsTranslated.map(tag => '<span class="inc-tag">' + esc(tag) + '</span>').join('');
     const cards = active.map((v, i) => {
       const maint = (v['Maint. Badge'] || '').toLowerCase() === 'yes';
@@ -420,6 +423,7 @@
     el.innerHTML = `
       <div id="zero-down-leases" class="section section-gray acs-oem-brand">
         <span class="scroll-target"></span>
+        <div class="section-inner">
         <div class="section-header">
           <p class="section-eyebrow">${esc(t('leaseSectionEyebrow'))}</p>
           <h2 class="section-title acs-bold">${esc(t('leaseSectionTitle'))}</h2>
@@ -434,6 +438,7 @@
         </div>
         <div class="card-grid">${cards}</div>
         ${leaseDisclHtml}
+        </div>
       </div>`;
   }
 
@@ -583,12 +588,14 @@
     el.innerHTML = `
       <div id="programs" class="section section-alt acs-oem-brand">
         <span class="scroll-target"></span>
+        <div class="section-inner">
         <div class="section-header">
           <p class="section-eyebrow">${esc(t('programsSectionEyebrow'))}</p>
           <h2 class="section-title acs-bold">${esc(t('programsSectionTitle'))}</h2>
           <p class="section-sub">${esc(t('programsSectionSub'))}</p>
         </div>
         <div class="promo-grid">${cards}</div>
+        </div>
       </div>`;
   }
 
