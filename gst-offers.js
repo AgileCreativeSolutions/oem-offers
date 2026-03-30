@@ -306,14 +306,27 @@
            <div class="pill-sub">${esc(t('offerBarHelpSub'))}</div>
          </div>`;
 
+    let aprTerms   = active.map(v => v['APR Term']      || 'APR / 60 mo.');
+    let badge2Lbls = active.map(v => v['Badge 2 Label'] || '$0 DOWN');
+    let badge2Subs = active.map(v => v['Badge 2 Sub']   || 'Payment');
+    let pmtsBars   = active.map(v => v['Payments Bar']  || '+0 PAYMENTS FOR 3 MOS');
+    if (IS_ES) {
+      [aprTerms, badge2Lbls, badge2Subs, pmtsBars] = await Promise.all([
+        translateBatch(aprTerms),
+        translateBatch(badge2Lbls),
+        translateBatch(badge2Subs),
+        translateBatch(pmtsBars),
+      ]);
+    }
+
     const cards = active.map((v, i) => {
       const flip     = (v['Flip Image'] || '').toLowerCase() === 'yes';
-      const aprRate    = v['APR Rate']       || '0%';
-      const aprTerm    = v['APR Term']       || 'APR / 60 mo.';
-      const badge2Lbl  = v['Badge 2 Label']  || '$0 DOWN';
-      const badge2Sub  = v['Badge 2 Sub']    || 'Payment';
-      const pmtsBar    = v['Payments Bar']   || '+0 PAYMENTS FOR 3 MOS';
-      const claimUrl   = v['Claim Offer URL'] || '/new-car-specials-lead-form.htm';
+      const aprRate  = v['APR Rate']        || '0%';
+      const aprTerm  = aprTerms[i];
+      const badge2Lbl = badge2Lbls[i];
+      const badge2Sub = badge2Subs[i];
+      const pmtsBar   = pmtsBars[i];
+      const claimUrl  = v['Claim Offer URL'] || '/new-car-specials-lead-form.htm';
       return `
         <div class="v-card">
           <div class="v-card-img">
