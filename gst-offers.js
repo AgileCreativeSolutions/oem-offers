@@ -22,16 +22,17 @@
   'use strict';
 
   const ROOT_ID   = 'gst-specials';
-  const PUBLISHED_ID = '2PACX-1vTm6S7twOLJ_BBdHV6ciQ0hh2gCE6nvx7NbYOheQGj4UFh2Cndgcm2sY33gqhQa8ysbFxEXX1Xx3MSJ';
+  const PUBLISHED_ID = '2PACX-1vRDlL88BHsoKBay_M_zNZgJDoMIiWAj5Fc_86ykbl6Q7xETAD2it2wgXkdJ2l4yfxtTihJFigdOPdkm';
   const CACHE_TTL = 24 * 60 * 60 * 1000;
   const IS_ES = /ofertas-especiales|spanish-specials-test-page/i.test(window.location.pathname);
 
   const TABS = {
-    tz:       '1364600356',
-    gg:       '963178167',
-    lease:    '94483649',
-    used:     '1759469983',
-    programs: '1977351644',
+    tz_banner: '726598542',
+    tz:        '1484245835',
+    gg:        '469709076',
+    lease:     '1929259886',
+    programs:  '2013659529',
+    used:      '1815578815',
   };
 
   // ── CSV fetch ──────────────────────────────────────────────────────
@@ -256,15 +257,63 @@
 
   // ── Section builders ───────────────────────────────────────────────
 
-  async function buildTripleZero(offers, el) {
+  async function buildTripleZero(offers, bannerOffers, el) {
     let sectionDisclaimer = (offers.find(o => o['Section Disclaimer']) || {})['Section Disclaimer'] || '';
     const active = offers.filter(isVisible);
     if (!active.length) { el.style.display = 'none'; return; }
     if (IS_ES && sectionDisclaimer) [sectionDisclaimer] = await translateBatch([sectionDisclaimer]);
     let models = active.map(v => v['Model']);
 
+    // ── Offer bar (banner tab) ────────────────────────────────────────
+    let barItems = bannerOffers.filter(isVisible);
+    if (IS_ES && barItems.length) {
+      const labels = barItems.map(o => o['Label']);
+      const subs   = barItems.map(o => o['Subtext']);
+      const [xlLabels, xlSubs] = await Promise.all([translateBatch(labels), translateBatch(subs)]);
+      barItems = barItems.map((o, i) => ({ ...o, Label: xlLabels[i], Subtext: xlSubs[i] }));
+    }
+    const offerBarHtml = barItems.length
+      ? barItems.map(item => {
+          const sep = (item['Separator Before'] || '').trim();
+          return `${sep ? `<div class="offer-or">${esc(sep)}</div>` : ''}
+            <div class="offer-pill">
+              <div class="big-num">${esc(item['Big Value'])}</div>
+              <div class="pill-label">${esc(item['Label'])}</div>
+              <div class="pill-sub">${esc(item['Subtext'])}</div>
+            </div>`;
+        }).join('')
+      : `<div class="offer-pill">
+           <div class="big-num">0%</div>
+           <div class="pill-label">${esc(t('offerBarAPRLbl'))}</div>
+           <div class="pill-sub">${esc(t('offerBarAPRSub'))}</div>
+         </div>
+         <div class="offer-or">${esc(t('or'))}</div>
+         <div class="offer-pill">
+           <div class="big-num">$0</div>
+           <div class="pill-label">${esc(t('offerBarDownLbl'))}</div>
+           <div class="pill-sub">${esc(t('offerBarDownSub'))}</div>
+         </div>
+         <div class="offer-or">+</div>
+         <div class="offer-pill">
+           <div class="big-num">0</div>
+           <div class="pill-label">${esc(t('offerBarPmtsLbl'))}</div>
+           <div class="pill-sub">${esc(t('offerBarPmtsSub'))}</div>
+         </div>
+         <div class="offer-or">+</div>
+         <div class="offer-pill">
+           <div class="big-num">✓</div>
+           <div class="pill-label">${esc(t('offerBarHelpLbl'))}</div>
+           <div class="pill-sub">${esc(t('offerBarHelpSub'))}</div>
+         </div>`;
+
     const cards = active.map((v, i) => {
-      const flip = (v['Flip Image'] || '').toLowerCase() === 'yes';
+      const flip     = (v['Flip Image'] || '').toLowerCase() === 'yes';
+      const aprRate    = v['APR Rate']       || '0%';
+      const aprTerm    = v['APR Term']       || 'APR / 60 mo.';
+      const badge2Lbl  = v['Badge 2 Label']  || '$0 DOWN';
+      const badge2Sub  = v['Badge 2 Sub']    || 'Payment';
+      const pmtsBar    = v['Payments Bar']   || '+0 PAYMENTS FOR 3 MOS';
+      const claimUrl   = v['Claim Offer URL'] || '/new-car-specials-lead-form.htm';
       return `
         <div class="v-card">
           <div class="v-card-img">
@@ -273,14 +322,17 @@
           <div class="v-card-body">
             <div class="v-card-year">${esc(v['Year'])}</div>
             <div class="v-card-model">${esc(models[i])}</div>
-            <div class="tz-badges">
-              <div class="tz-badge"><div class="tz-val">0%</div><div class="tz-term">${esc(t('aprLabel'))}</div></div>
-              <div class="tz-or">${esc(t('or'))}</div>
-              <div class="tz-badge"><div class="tz-val">$0</div><div class="tz-term">${esc(t('downPmts'))}</div></div>
+            <div class="tz-offer-group">
+              <div class="tz-badges">
+                <div class="tz-badge"><div class="tz-val">${esc(aprRate)}</div><div class="tz-term">${esc(aprTerm)}</div></div>
+                <div class="tz-or">${esc(t('or'))}</div>
+                <div class="tz-badge"><div class="tz-val">${esc(badge2Lbl)}</div><div class="tz-term">${esc(badge2Sub)}</div></div>
+              </div>
+              <div class="tz-pmts-bar">${esc(pmtsBar)}</div>
             </div>
             <div class="v-card-cta">
               <a href="${esc(v['Shop URL'])}" class="btn btn-primary">${esc(t('shopNow'))}</a>
-              <a href="/new-car-specials-lead-form.htm" class="btn btn-outline">${esc(t('claimOffer'))}</a>
+              <a href="${esc(claimUrl)}" class="btn btn-outline">${esc(t('claimOffer'))}</a>
             </div>
           </div>
         </div>`;
@@ -295,29 +347,7 @@
           <p class="section-sub">${esc(t('tzSectionSub'))}</p>
         </div>
         <div class="offer-bar">
-          <div class="offer-pill">
-            <div class="big-num">0%</div>
-            <div class="pill-label">${esc(t('offerBarAPRLbl'))}</div>
-            <div class="pill-sub">${esc(t('offerBarAPRSub'))}</div>
-          </div>
-          <div class="offer-or">${esc(t('or'))}</div>
-          <div class="offer-pill">
-            <div class="big-num">$0</div>
-            <div class="pill-label">${esc(t('offerBarDownLbl'))}</div>
-            <div class="pill-sub">${esc(t('offerBarDownSub'))}</div>
-          </div>
-          <div class="offer-or">+</div>
-          <div class="offer-pill">
-            <div class="big-num">0</div>
-            <div class="pill-label">${esc(t('offerBarPmtsLbl'))}</div>
-            <div class="pill-sub">${esc(t('offerBarPmtsSub'))}</div>
-          </div>
-          <div class="offer-or">+</div>
-          <div class="offer-pill">
-            <div class="big-num">✓</div>
-            <div class="pill-label">${esc(t('offerBarHelpLbl'))}</div>
-            <div class="pill-sub">${esc(t('offerBarHelpSub'))}</div>
-          </div>
+          ${offerBarHtml}
         </div>
         <div class="card-grid">${cards}</div>
         ${sectionDisclaimer ? `
@@ -371,25 +401,19 @@
   }
 
   async function buildLeases(offers, el) {
-    let sectionDisclaimer = (offers.find(o => o['Section Disclaimer']) || {})['Section Disclaimer'] || '';
     const active = offers.filter(isVisible);
     if (!active.length) { el.style.display = 'none'; return; }
-    if (IS_ES && sectionDisclaimer) [sectionDisclaimer] = await translateBatch([sectionDisclaimer]);
 
-    // Build disclaimer HTML as a plain string — no nested template literals
-    let leaseDisclHtml = '';
-    if (sectionDisclaimer) {
-      let bulletList = '';
-      if (active.some(o => o['Model Number'] || o['Selling Price'])) {
-        const items = active.filter(o => o['Model'] && o['Lease Price']).map(o => {
-          const modelNum  = o['Model Number']  ? ' (Model ' + esc(o['Model Number'])  + ')' : '';
-          const sellPrice = o['Selling Price']  ? ' \u00b7 ' + esc(o['Selling Price']) : '';
-          return '<li>' + esc(o['Model']) + modelNum + ': ' + esc(o['Lease Price']) + '/mo with ' + esc(o['Due at Signing']) + ' down or ' + esc(o['$0 Down Price']) + '/mo $0 down' + sellPrice + '</li>';
-        });
-        bulletList = '<ul>' + items.join('') + '</ul>';
-      }
-      leaseDisclHtml = '<details class="disclaimer" style="margin-top:16px;"><summary>$0 Down Lease Offers \u2014 Disclaimer</summary><p>' + esc(sectionDisclaimer) + '</p>' + bulletList + '</details>';
-    }
+    let discls = active.map(o => o['Section Disclaimer'] || '');
+    if (IS_ES) discls = await translateBatch(discls);
+
+    // Section-level disclaimer block — *Year Model: as bold header per vehicle
+    const disclaimerEntries = active
+      .map((v, i) => discls[i] ? `<p><strong>*${esc(v['Year'])} ${esc(v['Model'])}:</strong><br>${esc(discls[i])}</p>` : '')
+      .filter(Boolean);
+    const leaseSectionDisclHtml = disclaimerEntries.length
+      ? `<details class="disclaimer" style="margin-top:16px;"><summary>$0 Down Lease Offers \u2014 Disclaimer</summary>${disclaimerEntries.join('')}</details>`
+      : '';
 
     let models = active.map(v => v['Model']);
 
@@ -437,7 +461,7 @@
           <div class="includes-tags">${incTags}</div>
         </div>
         <div class="card-grid">${cards}</div>
-        ${leaseDisclHtml}
+        ${leaseSectionDisclHtml}
         </div>
       </div>`;
   }
@@ -612,6 +636,50 @@
 
     if (IS_USED) {
       root.appendChild(usedEl);
+      // Skeleton for used specials while data loads
+      usedEl.innerHTML = `
+      <div class="skeleton-section">
+        <div class="section-inner">
+          <div class="skel" style="width:100%;height:240px;border-radius:6px;margin-bottom:16px;"></div>
+        </div>
+      </div>
+      <div class="skeleton-section skeleton-alt">
+        <div class="section-inner">
+          <div class="skel-header">
+            <div class="skel skel-eyebrow"></div>
+            <div class="skel skel-title" style="margin-top:8px;"></div>
+          </div>
+          <div class="skel-promo-grid">
+            ${Array(2).fill(`
+            <div class="skel-promo-card">
+              <div class="skel-promo-img"><div class="skel"></div></div>
+              <div class="skel-promo-body">
+                <div class="skel" style="height:18px;width:80%;"></div>
+                <div class="skel" style="height:12px;"></div>
+                <div class="skel" style="height:12px;width:90%;"></div>
+                <div class="skel" style="height:34px;margin-top:12px;"></div>
+              </div>
+            </div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="skeleton-section skeleton-alt" style="padding-top:0;">
+        <div class="section-inner">
+          <div class="skel-promo-grid">
+            ${Array(2).fill(`
+            <div class="skel-promo-card">
+              <div class="skel-promo-img"><div class="skel"></div></div>
+              <div class="skel-promo-body">
+                <div class="skel" style="height:10px;width:40%;"></div>
+                <div class="skel" style="height:18px;width:70%;"></div>
+                <div class="skel" style="height:12px;"></div>
+                <div class="skel" style="height:12px;width:90%;"></div>
+                <div class="skel" style="height:34px;margin-top:12px;"></div>
+              </div>
+            </div>`).join('')}
+          </div>
+        </div>
+      </div>`;
     } else {
       root.append(tzEl, ggEl, leaseEl, programsEl);
       // Show skeleton placeholders while data loads
@@ -672,8 +740,9 @@
     }
 
     try {
-      const [tzCsv, ggCsv, leaseCsv, usedCsv, programsCsv] = await Promise.all([
+      const [tzCsv, tzBannerCsv, ggCsv, leaseCsv, usedCsv, programsCsv] = await Promise.all([
         IS_USED ? Promise.resolve('') : fetchTab(TABS.tz),
+        IS_USED ? Promise.resolve('') : fetchTab(TABS.tz_banner),
         IS_USED ? Promise.resolve('') : fetchTab(TABS.gg),
         IS_USED ? Promise.resolve('') : fetchTab(TABS.lease),
         IS_USED ? fetchTab(TABS.used) : Promise.resolve(''),
@@ -684,7 +753,7 @@
       translateSidebar();
 
       await Promise.all([
-        IS_USED ? Promise.resolve() : buildTripleZero(csvToOffers(tzCsv),         tzEl),
+        IS_USED ? Promise.resolve() : buildTripleZero(csvToOffers(tzCsv), csvToOffers(tzBannerCsv), tzEl),
         IS_USED ? Promise.resolve() : buildGettelsGotIt(csvToOffers(ggCsv),       ggEl),
         IS_USED ? Promise.resolve() : buildLeases(csvToOffers(leaseCsv),          leaseEl),
         IS_USED ? Promise.resolve() : buildSpecialPrograms(csvToOffers(programsCsv), programsEl),
