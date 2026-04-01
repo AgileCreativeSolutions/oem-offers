@@ -198,23 +198,28 @@
   }
 
   function parseCSV(text) {
+    // Parse character-by-character so quoted fields containing newlines are handled correctly
     var rows = [];
-    var lines = text.split(/\r?\n/);
-    for (var l = 0; l < lines.length; l++) {
-      var line = lines[l];
-      if (!line.trim()) continue;
-      var cols = [], cur = '', inQ = false;
-      for (var i = 0; i < line.length; i++) {
-        var ch = line[i];
-        if (ch === '"') {
-          if (inQ && line[i+1] === '"') { cur += '"'; i++; }
-          else { inQ = !inQ; }
-        } else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
-        else { cur += ch; }
+    var cols = [], cur = '', inQ = false;
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (ch === '"') {
+        if (inQ && text[i+1] === '"') { cur += '"'; i++; }
+        else { inQ = !inQ; }
+      } else if (ch === ',' && !inQ) {
+        cols.push(cur); cur = '';
+      } else if ((ch === '\n' || (ch === '\r' && text[i+1] === '\n')) && !inQ) {
+        if (ch === '\r') i++; // skip \n of \r\n
+        cols.push(cur); cur = '';
+        if (cols.some(function(c){ return c !== ''; })) rows.push(cols);
+        cols = [];
+      } else {
+        cur += ch;
       }
-      cols.push(cur);
-      rows.push(cols);
     }
+    // flush last row
+    cols.push(cur);
+    if (cols.some(function(c){ return c !== ''; })) rows.push(cols);
     return rows;
   }
 }());
