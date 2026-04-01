@@ -75,6 +75,7 @@
 
         if (get('Visibility').toLowerCase() === 'hide') continue;
         var model = get('Model');
+        if (!model) continue; // skip genuinely empty slots
 
         var anchorId     = get('Anchor ID') || (model.charAt(0).toUpperCase() + model.slice(1));
         var year         = get('Year');
