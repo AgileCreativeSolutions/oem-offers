@@ -94,6 +94,18 @@ async function updateOffersFromSheet() {
       if (el) el.textContent = val;
     });
 
+    // Callout banner
+    const calloutVal = data["Call Out"]?.value;
+    const calloutEl = section.querySelector('.offer-callout');
+    if (calloutEl) {
+      if (calloutVal && !isHide(calloutVal)) {
+        calloutEl.textContent = calloutVal;
+        calloutEl.style.display = "block";
+      } else {
+        calloutEl.style.display = "none";
+      }
+    }
+
     // CTA link
     const ctaLinkVal = data["CTA Link"]?.value;
     const ctaEl = section.querySelector('.cta-link');
