@@ -118,7 +118,7 @@
     var d1    = esc(o['Offer ' + n + ' Detail 1'] || '');
     var d2    = esc(o['Offer ' + n + ' Detail 2'] || '');
     if (!label && !value) return '';
-    return '<div style="margin-bottom:14px;">'
+    return '<div style="margin-bottom:14px;text-align:center;">'
       + (label ? '<p class="acs-bold">' + label + '</p>' : '')
       + (value ? '<h3 class="acs-h6 acs-mb-2 acs-bold"><span class="acs-h3 acs-accent acs-bold">' + value + '</span></h3>' : '')
       + (d1    ? '<p class="acs-text-5 acs-lh-4">' + d1 + '</p>' : '')
@@ -166,7 +166,7 @@
       + '<p class="acs-text-9 acs-lh-5 acs-uppercase">' + year + ' FORD</p>'
       + modelLine + stockLine
       + '</div>'
-      + '<div style="margin-top:12px;">' + blocks + '</div>'
+      + '<div style="margin-top:12px;text-align:center;">' + blocks + '</div>'
       + '<div class="acs-row acs-mt-3"><div class="acs-twelve acs-columns">'
       + '<a href="' + ctaURL + '" class="acs-button acs-button-margin acs-button-fw">' + ctaLabel + '</a>'
       + '</div></div>'
