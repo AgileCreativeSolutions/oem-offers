@@ -151,9 +151,8 @@
     var blocks = [1, 2, 3, 4].map(function (n) { return buildOfferBlock(o, n); }).join('');
 
     var disclaimerHTML = disclaimer
-      ? '<hr><div class="acs-row"><div class="acs-twelve acs-text-center acs-lh-5">'
-        + '<button class="acs-accordion"></button>'
-        + '<div class="acs-panel"><p class="acs-text-3 acs-lh-5 acs-opacity-50">' + disclaimer + '</p></div>'
+      ? '<hr><div class="acs-row"><div class="acs-twelve acs-px-3 acs-pb-3">'
+        + '<p style="font-size:12px;line-height:15px;color:#444;margin:0;">' + disclaimer + '</p>'
         + '</div></div>'
       : '';
 
