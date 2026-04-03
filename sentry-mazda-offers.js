@@ -171,10 +171,9 @@
       : '';
 
     var disclaimerHTML = disclaimer
-      ? '<div class="acs-row acs-pb-4 acs-bg-white acs-disclaimer-box"><div class="acs-twelve">'
-        + '<button class="acs-accordion acs-opacity-40"></button>'
-        + '<div class="acs-disclaimer acs-text-3 acs-lh-8 acs-px-5"><p>' + disclaimer + '</p></div>'
-        + '</div></div>'
+      ? '<div class="acs-row acs-pb-4 acs-px-4 acs-bg-white">'
+        + '<p style="font-size:12px;line-height:15px;color:#444;margin:0;">' + disclaimer + '</p>'
+        + '</div>'
       : '';
 
     return '<div class="acs-six-md acs-four-xl acs-four-3xl acs-columns acs-my-3">'
