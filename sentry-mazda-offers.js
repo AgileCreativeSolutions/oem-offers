@@ -77,32 +77,48 @@
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); });
   }
 
-  function splitLine(line) {
-    var out = [], cur = '', inQ = false;
-    for (var i = 0; i < line.length; i++) {
-      var ch = line[i];
-      if (ch === '"') { inQ = !inQ; }
-      else if (ch === ',' && !inQ) { out.push(cur); cur = ''; }
-      else { cur += ch; }
+  // ── Full RFC-4180 CSV parser — handles quoted fields with embedded newlines ──
+  function parseCSV(text) {
+    text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    var rows = [], cur = [], field = '', inQ = false;
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (inQ) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }  // escaped quote
+          else { inQ = false; }
+        } else {
+          field += ch;  // embedded newline preserved as space
+        }
+      } else {
+        if      (ch === '"')  { inQ = true; }
+        else if (ch === ',')  { cur.push(field); field = ''; }
+        else if (ch === '\n') { cur.push(field); rows.push(cur); cur = []; field = ''; }
+        else                  { field += ch; }
+      }
     }
-    out.push(cur);
-    return out;
+    // flush final field/row
+    if (field || cur.length) { cur.push(field); rows.push(cur); }
+    return rows;
   }
 
   function csvToOffers(text) {
-    var lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-    if (lines.length < 3) return [];
+    var rows = parseCSV(text);
+    if (rows.length < 3) return [];
+
+    // Scan all rows to find the max number of offer columns
     var numOffers = 0;
-    for (var s = 0; s < lines.length; s++) {
-      if (!lines[s].trim()) continue;
-      var w = splitLine(lines[s]).length - 1;
+    for (var s = 0; s < rows.length; s++) {
+      var w = rows[s].length - 1;
       if (w > numOffers) numOffers = w;
     }
+
     var offers = [];
     for (var v = 0; v < numOffers; v++) offers.push({});
-    for (var r = 2; r < lines.length; r++) {
-      if (!lines[r].trim()) continue;
-      var cols = splitLine(lines[r]);
+
+    // Row 0 = sheet title (skipped), Row 1 = column headers (skipped), Row 2+ = data
+    for (var r = 2; r < rows.length; r++) {
+      var cols  = rows[r];
       var field = (cols[0] || '').trim().replace(/\s*\[.*?\]\s*$/, '').trim();
       if (!field || field.charAt(0) === '\u2014') continue;
       for (var v = 0; v < numOffers; v++) {
@@ -217,7 +233,7 @@
       .then(function (text) {
         var offers = csvToOffers(text);
         var cards  = offers
-          .filter(function (o) { return !isHidden(o['Visibility']); })
+          .filter(function (o) { return !isHidden(o['Visibility']) && (o['Year'] || o['Model']); })
           .map(buildCard).join('');
 
         hideSkeletons(root);
