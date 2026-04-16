@@ -83,6 +83,7 @@ async function updateOffersFromSheet() {
         'model-title':        'Model Title',
         'model-details':      'Model Details',
         'electric-range':     'Electric Range',
+        'electric-range-disclaimer':     'Electric Range Disclaimer',
         'model':              'Model',
         'trim-level':         'Trim Level',
         'msrp':               'MSRP',
