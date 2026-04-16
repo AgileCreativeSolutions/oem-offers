@@ -1,4 +1,4 @@
-// ============================================================
+ // ============================================================
 // Lovering Auto Group — Volvo Specials
 // https://AgileCreativeSolutions.github.io/oem-offers/lag-offers.js
 // Sheet tab: LAG (gid=1204848822)
@@ -82,6 +82,7 @@ async function updateOffersFromSheet() {
     const textMap = {
         'model-title':        'Model Title',
         'model-details':      'Model Details',
+        'electric-range':     'Electric Range',
         'model':              'Model',
         'trim-level':         'Trim Level',
         'msrp':               'MSRP',
