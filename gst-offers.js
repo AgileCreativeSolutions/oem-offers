@@ -169,14 +169,14 @@
     offerBarHelpLbl:     'We Can Help',
     offerBarHelpSub:     'Bad or no credit',
     tzSectionEyebrow:    'Gettel Stadium Toyota',
-    tzSectionTitle:      'The Real Triple Zero Sale',
-    tzSectionSub:        'Your choice of three ways to save on select in-stock new 2025 & 2026 Toyotas. Only one offer per purchase — pick what works for you.',
+    tzSectionTitle:      'The Real Triple Zero Event',
+    tzSectionSub:        'Get the same prices in store as online with 0 guess work and 0 hidden fees!',
     ggSectionEyebrow:    'Gettel Stadium Toyota',
     ggSectionTitle:      "Gettel's Got It!",
     ggSectionSub:        "Skip the search and start saving with exclusive deals you won't find anywhere else — only at Gettel Stadium Toyota.",
     leaseSectionEyebrow: 'Gettel Stadium Toyota',
-    leaseSectionTitle:   'Real $0 Down Leases',
-    leaseSectionSub:     'No money down. No hidden fees. No kidding.',
+    leaseSectionTitle:   'SPECIAL OFFERS',
+    leaseSectionSub:     '',
     incBarTitle:         'Every Lease Includes:',
     incBarSub:           'All items at no added cost.',
     navLabel:               'Specials',
@@ -287,7 +287,7 @@
            <div class="pill-label">${esc(t('offerBarAPRLbl'))}</div>
            <div class="pill-sub">${esc(t('offerBarAPRSub'))}</div>
          </div>
-         <div class="offer-or">${esc(t('or'))}</div>
+         <div class="offer-or">+</div>
          <div class="offer-pill">
            <div class="big-num">$0</div>
            <div class="pill-label">${esc(t('offerBarDownLbl'))}</div>
@@ -338,7 +338,6 @@
             <div class="tz-offer-group">
               <div class="tz-badges">
                 <div class="tz-badge"><div class="tz-val">${esc(aprRate)}</div><div class="tz-term">${esc(aprTerm)}</div></div>
-                <div class="tz-or">${esc(t('or'))}</div>
                 <div class="tz-badge"><div class="tz-val">${esc(badge2Lbl)}</div><div class="tz-term">${esc(badge2Sub)}</div></div>
               </div>
               <div class="tz-pmts-bar">${esc(pmtsBar)}</div>
@@ -365,7 +364,7 @@
         <div class="card-grid">${cards}</div>
         ${sectionDisclaimer ? `
         <details class="disclaimer" style="margin-top:16px;">
-          <summary>Triple Zero Sale — Disclaimer</summary>
+          <summary>${esc(t('disclaimerToggle'))}</summary>
           <p>${esc(sectionDisclaimer)}</p>
         </details>` : ''}
       </div>`;
@@ -425,7 +424,7 @@
       .map((v, i) => discls[i] ? `<p><strong>*${esc(v['Year'])} ${esc(v['Model'])}:</strong><br>${esc(discls[i])}</p>` : '')
       .filter(Boolean);
     const leaseSectionDisclHtml = disclaimerEntries.length
-      ? `<details class="disclaimer" style="margin-top:16px;"><summary>$0 Down Lease Offers \u2014 Disclaimer</summary>${disclaimerEntries.join('')}</details>`
+      ? `<details class="disclaimer" style="margin-top:16px;"><summary>${esc(t('disclaimerToggle'))}</summary>${disclaimerEntries.join('')}</details>`
       : '';
 
     let models = active.map(v => v['Model']);
@@ -464,14 +463,7 @@
         <div class="section-header">
           <p class="section-eyebrow">${esc(t('leaseSectionEyebrow'))}</p>
           <h2 class="section-title acs-bold">${esc(t('leaseSectionTitle'))}</h2>
-          <p class="section-sub">${esc(t('leaseSectionSub'))}</p>
-        </div>
-        <div class="includes-bar">
-          <div class="includes-bar-label">
-            <p>${esc(t('incBarTitle'))}</p>
-            <p>${esc(t('incBarSub'))}</p>
-          </div>
-          <div class="includes-tags">${incTags}</div>
+          ${t('leaseSectionSub') ? `<p class="section-sub">${esc(t('leaseSectionSub'))}</p>` : ''}
         </div>
         <div class="card-grid">${cards}</div>
         ${leaseSectionDisclHtml}
@@ -510,7 +502,7 @@
           </div>
         </div>
         ${o['Disclaimer'] ? `<details class="disclaimer">
-          <summary>${esc(o['Subheading'])} — Disclaimer</summary>
+          <summary>${esc(t('disclaimerToggle'))}</summary>
           <p>${esc(o['Disclaimer'])}</p>
         </details>` : ''}
       </div>
