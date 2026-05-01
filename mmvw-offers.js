@@ -93,28 +93,42 @@
   }
 
   // ── CSV PARSER ───────────────────────────────────────────────────────────────
-  // Handles quoted fields (including embedded commas and newlines).
+  // Walks character-by-character so quoted fields can contain embedded commas
+  // AND embedded newlines (Alt+Enter line breaks inside Google Sheets cells,
+  // disclaimer text pasted from Word/PDF, etc.). A newline only terminates a
+  // row when we are NOT currently inside a quoted field.
   function parseCSV(text) {
-    var rows = [];
-    var lines = text.trim().split(/\r?\n/);
-    lines.forEach(function (line) {
-      var row = [];
-      var inQuote = false;
-      var val = '';
-      for (var i = 0; i < line.length; i++) {
-        var ch = line[i];
-        if (ch === '"') {
-          if (inQuote && line[i + 1] === '"') { val += '"'; i++; }
-          else { inQuote = !inQuote; }
-        } else if (ch === ',' && !inQuote) {
-          row.push(val.trim()); val = '';
-        } else {
-          val += ch;
-        }
+    var rows    = [];
+    var row     = [];
+    var val     = '';
+    var inQuote = false;
+
+    // Normalize line endings to \n so we only have one case to handle below.
+    text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+
+      if (ch === '"') {
+        // Escaped double-quote inside a quoted field: ""
+        if (inQuote && text[i + 1] === '"') { val += '"'; i++; }
+        else { inQuote = !inQuote; }
+      } else if (ch === ',' && !inQuote) {
+        row.push(val.trim()); val = '';
+      } else if (ch === '\n' && !inQuote) {
+        row.push(val.trim()); rows.push(row);
+        row = []; val = '';
+      } else {
+        val += ch;
       }
+    }
+
+    // Flush the final cell / row (handles files with no trailing newline).
+    if (val.length > 0 || row.length > 0) {
       row.push(val.trim());
       rows.push(row);
-    });
+    }
+
     return rows;
   }
 
