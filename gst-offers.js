@@ -22,17 +22,17 @@
   'use strict';
 
   const ROOT_ID   = 'gst-specials';
-  const PUBLISHED_ID = '2PACX-1vRDlL88BHsoKBay_M_zNZgJDoMIiWAj5Fc_86ykbl6Q7xETAD2it2wgXkdJ2l4yfxtTihJFigdOPdkm';
+  const PUBLISHED_ID = '2PACX-1vT_NkCgmMIPQofGnlqTNF__0OtnWwEj727RWUP2Up9L0bnQyz_TDiRoh3GDkitU-Lc-4j9md7-3OFeX';
   const CACHE_TTL = 24 * 60 * 60 * 1000;
   const IS_ES = /ofertas-especiales|spanish-specials-test-page/i.test(window.location.pathname);
 
   const TABS = {
-    tz_banner: '726598542',
-    tz:        '1484245835',
-    gg:        '469709076',
-    lease:     '1929259886',
-    programs:  '2013659529',
-    used:      '1815578815',
+    tz_banner: '34597066',
+    tz:        '891998203',
+    gg:        '623929825',
+    lease:     '479064372',
+    programs:  '2028269504',
+    used:      '437612271',
   };
 
   // ── CSV fetch ──────────────────────────────────────────────────────
@@ -99,11 +99,36 @@
         offers[oi][fieldName] = (rows[ri][oi + 1] || '').trim();
       }
     }
-    return offers;
+    // Drop phantom offer columns — Google Sheets exports trailing empty
+    // columns as part of the CSV (default 26-col width), and they'd
+    // otherwise render as broken empty cards because isVisible only
+    // suppresses on explicit "hide", not on emptiness.
+    return offers.filter(o => Object.values(o).some(v => v));
   }
 
   function isVisible(o) {
     return (o['Visibility'] || '').trim().toLowerCase() !== 'hide';
+  }
+
+  // Section headers (Eyebrow / Title / Subtitle) live in their own field rows
+  // in each section sheet. Reads the first non-empty value across columns,
+  // translates for Spanish, and renders a section-header HTML block.
+  async function buildSectionHeader(offers) {
+    let eyebrow  = (offers.find(o => o['Section Eyebrow'])  || {})['Section Eyebrow']  || '';
+    let title    = (offers.find(o => o['Section Title'])    || {})['Section Title']    || '';
+    let subtitle = (offers.find(o => o['Section Subtitle']) || {})['Section Subtitle'] || '';
+    if (IS_ES) {
+      const parts = [eyebrow, title, subtitle];
+      const xl = await translateBatch(parts);
+      eyebrow = xl[0]; title = xl[1]; subtitle = xl[2];
+    }
+    if (!eyebrow && !title && !subtitle) return '';
+    return `
+      <div class="section-header">
+        ${eyebrow  ? `<p class="section-eyebrow">${esc(eyebrow)}</p>`            : ''}
+        ${title    ? `<h2 class="section-title acs-bold">${esc(title)}</h2>`     : ''}
+        ${subtitle ? `<p class="section-sub">${esc(subtitle)}</p>`               : ''}
+      </div>`;
   }
 
   // ── Translation ────────────────────────────────────────────────────
@@ -152,12 +177,6 @@
     shopNow:             'Shop Now',
     claimOffer:          'Claim Offer',
     or:                  'or',
-    aprLabel:            'APR / 60 mo.',
-    downPmts:            'Down + 0 Pmts',
-    leaseLabel:          'Lease',
-    leaseZeroLabel:      '$0 Down Lease',
-    zeroDown:            'Zero down payment',
-    dueAtSigning:        'due at signing',
     maintBadge:          '✓ Includes Complimentary Maintenance',
     disclaimerToggle:    'Disclaimer',
     offerBarAPRLbl:      'APR Financing',
@@ -168,38 +187,12 @@
     offerBarPmtsSub:     'first 3 months',
     offerBarHelpLbl:     'We Can Help',
     offerBarHelpSub:     'Bad or no credit',
-    tzSectionEyebrow:    'Gettel Stadium Toyota',
-    tzSectionTitle:      'The Real Triple Zero Event',
-    tzSectionSub:        'Get the same prices in store as online with 0 guess work and 0 hidden fees!',
-    ggSectionEyebrow:    'Gettel Stadium Toyota',
-    ggSectionTitle:      "Gettel's Got It!",
-    ggSectionSub:        "Skip the search and start saving with exclusive deals you won't find anywhere else — only at Gettel Stadium Toyota.",
-    leaseSectionEyebrow: 'Gettel Stadium Toyota',
-    leaseSectionTitle:   'SPECIAL OFFERS',
-    leaseSectionSub:     '',
-    incBarTitle:         'Every Lease Includes:',
-    incBarSub:           'All items at no added cost.',
     navLabel:               'Specials',
     navTripleZero:          'Triple Zero Sale',
     navGettelsGotIt:        "Gettel's Got It!",
     navZeroDownLeases:      '$0 Down Leases',
     navSpecialPrograms:     'Special Programs',
-    programsSectionEyebrow: 'Additional Benefits',
-    programsSectionTitle:   'Special Programs',
-    programsSectionSub:     'Even more ways to save with great benefits at Gettel Stadium Toyota.',
   };
-
-  // incTags translated separately to avoid delimiter mangling in the main UI batch
-  const INC_TAGS_EN = [
-    '✓ Complimentary Maintenance — Full Lease',
-    '✓ 12,000 Miles / Year',
-    '✓ $0 Security Deposit',
-    '✓ Dealer Documentation Fee',
-    '✓ Filing Fee',
-    '✓ Lease Acquisition Fee',
-    '✓ Full Tank of Gas',
-  ];
-  let incTagsTranslated = INC_TAGS_EN;
 
   let UI = { ...UI_EN };
 
@@ -233,8 +226,6 @@
 
   async function translateUI() {
     if (!IS_ES) return;
-    // Translate incTags as a clean separate batch
-    incTagsTranslated = await translateBatch([...INC_TAGS_EN]);
     const keys   = Object.keys(UI_EN);
     const flat   = keys.map(k => Array.isArray(UI_EN[k]) ? UI_EN[k].join(' ||| ') : UI_EN[k]);
     const xlated = await translateBatch(flat);
@@ -259,9 +250,10 @@
 
   async function buildTripleZero(offers, bannerOffers, el) {
     let sectionDisclaimer = (offers.find(o => o['Section Disclaimer']) || {})['Section Disclaimer'] || '';
-    const active = offers.filter(isVisible);
+    const active = offers.filter(o => isVisible(o) && o['Year'] && o['Model']);
     if (!active.length) { el.style.display = 'none'; return; }
     if (IS_ES && sectionDisclaimer) [sectionDisclaimer] = await translateBatch([sectionDisclaimer]);
+    const sectionHeaderHtml = await buildSectionHeader(offers);
     let models = active.map(v => v['Model']);
 
     // ── Offer bar (banner tab) ────────────────────────────────────────
@@ -306,10 +298,10 @@
            <div class="pill-sub">${esc(t('offerBarHelpSub'))}</div>
          </div>`;
 
-    let aprTerms   = active.map(v => v['APR Term']      || 'APR / 60 mo.');
+    let aprTerms   = active.map(v => v['APR Term']      || '');
     let badge2Lbls = active.map(v => v['Badge 2 Label'] || '$0 DOWN');
-    let badge2Subs = active.map(v => v['Badge 2 Sub']   || 'Payment');
-    let pmtsBars   = active.map(v => v['Payments Bar']  || '+0 PAYMENTS FOR 3 MOS');
+    let badge2Subs = active.map(v => v['Badge 2 Sub']   || '');
+    let pmtsBars   = active.map(v => v['Payments Bar']  || '');
     if (IS_ES) {
       [aprTerms, badge2Lbls, badge2Subs, pmtsBars] = await Promise.all([
         translateBatch(aprTerms),
@@ -337,10 +329,10 @@
             <div class="v-card-model">${esc(models[i])}</div>
             <div class="tz-offer-group">
               <div class="tz-badges">
-                <div class="tz-badge"><div class="tz-val">${esc(aprRate)}</div><div class="tz-term">${esc(aprTerm)}</div></div>
-                <div class="tz-badge"><div class="tz-val">${esc(badge2Lbl)}</div><div class="tz-term">${esc(badge2Sub)}</div></div>
+                <div class="tz-badge"><div class="tz-val">${esc(aprRate)}</div>${aprTerm  ? `<div class="tz-term">${esc(aprTerm)}</div>`  : ''}</div>
+                <div class="tz-badge"><div class="tz-val">${esc(badge2Lbl)}</div>${badge2Sub ? `<div class="tz-term">${esc(badge2Sub)}</div>` : ''}</div>
               </div>
-              <div class="tz-pmts-bar">${esc(pmtsBar)}</div>
+              ${pmtsBar ? `<div class="tz-pmts-bar">${esc(pmtsBar)}</div>` : ''}
             </div>
             <div class="v-card-cta">
               <a href="${esc(v['Shop URL'])}" class="btn btn-primary">${esc(t('shopNow'))}</a>
@@ -353,11 +345,7 @@
       <div id="triple-zero" class="section section-alt acs-oem-brand">
         <span class="scroll-target"></span>
         <div class="section-inner">
-        <div class="section-header">
-          <p class="section-eyebrow">${esc(t('tzSectionEyebrow'))}</p>
-          <h2 class="section-title acs-bold">${esc(t('tzSectionTitle'))}</h2>
-          <p class="section-sub">${esc(t('tzSectionSub'))}</p>
-        </div>
+        ${sectionHeaderHtml}
         <div class="offer-bar">
           ${offerBarHtml}
         </div>
@@ -371,8 +359,9 @@
   }
 
   async function buildGettelsGotIt(offers, el) {
-    const active = offers.filter(isVisible);
+    const active = offers.filter(o => isVisible(o) && o['Title']);
     if (!active.length) { el.style.display = 'none'; return; }
+    const sectionHeaderHtml = await buildSectionHeader(offers);
     let titles = active.map(v => v['Title']);
     let descs  = active.map(v => v['Description']);
     let ctas   = active.map(v => v['CTA Label']);
@@ -402,78 +391,119 @@
       <div id="gettels-got-it" class="section section-gray acs-oem-brand">
         <span class="scroll-target"></span>
         <div class="section-inner">
-        <div class="section-header">
-          <p class="section-eyebrow">${esc(t('ggSectionEyebrow'))}</p>
-          <h2 class="section-title acs-bold">${esc(t('ggSectionTitle'))}</h2>
-          <p class="section-sub">${esc(t('ggSectionSub'))}</p>
-        </div>
+        ${sectionHeaderHtml}
         <div class="promo-grid">${cards}</div>
         </div>
       </div>`;
   }
 
   async function buildLeases(offers, el) {
-    const active = offers.filter(isVisible);
+    // Defensive: must be visible AND have identifying data. Catches phantom
+    // columns and stale rows where Visibility wasn't explicitly set to "hide"
+    // but the row is essentially empty / leftover noise.
+    const active = offers.filter(o => isVisible(o) && o['Year'] && o['Model']);
     if (!active.length) { el.style.display = 'none'; return; }
+    const sectionHeaderHtml = await buildSectionHeader(offers);
 
-    let discls = active.map(o => o['Section Disclaimer'] || '');
-    if (IS_ES) discls = await translateBatch(discls);
+    // ── Build per-vehicle offer blocks (1-4 offers each) ───────────────────
+    // For each visible vehicle, gather its visible offer slots into an array.
+    const FIELDS = ['Type', 'Headline', 'Terms', 'Disclaimer'];
+    const isOfferShown = card => (card || '').toLowerCase() !== 'hide';
+    const perVehicle = active.map(v => {
+      const blocks = [];
+      for (let n = 1; n <= 4; n++) {
+        if (!isOfferShown(v[`Offer ${n} Card`])) continue;
+        const data = {};
+        FIELDS.forEach(f => { data[f] = v[`Offer ${n} ${f}`] || ''; });
+        // Skip slot if every visible field is empty (avoid blank offer block)
+        if (!data.Type && !data.Headline && !data.Terms && !data.Disclaimer) continue;
+        data.n      = n;
+        data.orBar  = (v[`OR Bar ${n}`] || '').trim();   // bar that follows this offer
+        blocks.push(data);
+      }
+      return blocks;
+    });
 
-    // Section-level disclaimer block — *Year Model: as bold header per vehicle
-    const disclaimerEntries = active
-      .map((v, i) => discls[i] ? `<p><strong>*${esc(v['Year'])} ${esc(v['Model'])}:</strong><br>${esc(discls[i])}</p>` : '')
-      .filter(Boolean);
-    const leaseSectionDisclHtml = disclaimerEntries.length
-      ? `<details class="disclaimer" style="margin-top:16px;"><summary>${esc(t('disclaimerToggle'))}</summary>${disclaimerEntries.join('')}</details>`
-      : '';
+    // ── Spanish: translate every dynamic string in one batch for efficiency ─
+    if (IS_ES) {
+      const flat = [];
+      perVehicle.forEach(blocks => blocks.forEach(b => {
+        flat.push(b.Type, b.Headline, b.Terms, b.Disclaimer, b.orBar);
+      }));
+      if (flat.length) {
+        const xl = await translateBatch(flat);
+        let k = 0;
+        perVehicle.forEach(blocks => blocks.forEach(b => {
+          b.Type      = xl[k++];
+          b.Headline  = xl[k++];
+          b.Terms     = xl[k++];
+          b.Disclaimer= xl[k++];
+          b.orBar     = xl[k++];
+        }));
+      }
+    }
 
-    let models = active.map(v => v['Model']);
-
-    const incTags = incTagsTranslated.map(tag => '<span class="inc-tag">' + esc(tag) + '</span>').join('');
-    const cards = active.map((v, i) => {
+    const cards = active.map((v, vi) => {
       const maint = (v['Maint. Badge'] || '').toLowerCase() === 'yes';
       const flip  = (v['Flip Image'] || '').toLowerCase() === 'yes';
+      const blocks = perVehicle[vi];
+
+      const offersHtml = blocks.map((b, idx) => {
+        let html = '';
+        if (b.Type)     html += `<div class="lease-label">${esc(b.Type)}</div>`;
+        if (b.Headline) html += `<div class="lease-price">${esc(b.Headline)}</div>`;
+        if (b.Terms)    html += `<div class="lease-due">${esc(b.Terms)}</div>`;
+        // OR bar after this offer (except after the last visible one) — only render if bar text present
+        if (idx < blocks.length - 1 && b.orBar) {
+          html += `<div class="lease-divider">${esc(b.orBar)}</div>`;
+        }
+        return html;
+      }).join('');
+
+      // Roll up every offer's disclaimer for this vehicle into one toggle.
+      // When expanded, each entry is prefixed with its offer Type so multiples stay distinguishable.
+      const discEntries = blocks
+        .filter(b => b.Disclaimer)
+        .map(b => b.Type
+          ? `<p><strong>${esc(b.Type)}:</strong> ${esc(b.Disclaimer)}</p>`
+          : `<p>${esc(b.Disclaimer)}</p>`)
+        .join('');
+      const disclaimerBlock = discEntries
+        ? `<details class="disclaimer"><summary>${esc(t('disclaimerToggle'))}</summary>${discEntries}</details>`
+        : '';
+
       return `
-        <div class="v-card">
-          <div class="v-card-img"><img src="${esc(v['Image URL'])}" alt=""${flip ? ' style="transform:scaleX(-1)"' : ''}></div>
-          <div class="v-card-body">
-            <div class="v-card-year">${esc(v['Year'])}</div>
-            <div class="v-card-model">${esc(models[i])}</div>
-            ${maint ? `<div class="maint-badge">${esc(t('maintBadge'))}</div>` : ''}
-            <div class="lease-offer">
-              <div class="lease-label">${esc(t('leaseLabel'))}</div>
-              <div class="lease-price">${esc(v['Lease Price'])}<span class="lease-unit">/mo*</span></div>
-              <div class="lease-due">${esc(v['Due at Signing'])} ${esc(t('dueAtSigning'))} · ${esc(v['Lease Term'])}</div>
-              <div class="lease-divider">${esc(t('or'))}</div>
-              <div class="lease-label">${esc(t('leaseZeroLabel'))}</div>
-              <div class="lease-price">${esc(v['$0 Down Price'])}<span class="lease-unit">/mo*</span></div>
-              <div class="lease-due">${esc(t('zeroDown'))}</div>
-            </div>
-            <div class="v-card-cta">
-              <a href="${esc(v['Shop URL'])}" class="btn btn-primary">${esc(t('shopNow'))}</a>
-              <a href="/new-car-specials-lead-form.htm" class="btn btn-outline">${esc(t('claimOffer'))}</a>
+        <div class="lease-card-wrap">
+          <div class="v-card">
+            <div class="v-card-img"><img src="${esc(v['Image URL'])}" alt=""${flip ? ' style="transform:scaleX(-1)"' : ''}></div>
+            <div class="v-card-body">
+              <div class="v-card-year">${esc(v['Year'])}</div>
+              <div class="v-card-model">${esc(v['Model'])}</div>
+              ${maint ? `<div class="maint-badge">${esc(t('maintBadge'))}</div>` : ''}
+              ${offersHtml ? `<div class="lease-offer">${offersHtml}</div>` : ''}
+              <div class="v-card-cta">
+                <a href="${esc(v['Shop URL'])}" class="btn btn-primary">${esc(t('shopNow'))}</a>
+                <a href="/new-car-specials-lead-form.htm" class="btn btn-outline">${esc(t('claimOffer'))}</a>
+              </div>
             </div>
           </div>
+          ${disclaimerBlock ? `<div class="v-card-disc">${disclaimerBlock}</div>` : ''}
         </div>`;
     }).join('');
+
     el.innerHTML = `
       <div id="zero-down-leases" class="section section-gray acs-oem-brand">
         <span class="scroll-target"></span>
         <div class="section-inner">
-        <div class="section-header">
-          <p class="section-eyebrow">${esc(t('leaseSectionEyebrow'))}</p>
-          <h2 class="section-title acs-bold">${esc(t('leaseSectionTitle'))}</h2>
-          ${t('leaseSectionSub') ? `<p class="section-sub">${esc(t('leaseSectionSub'))}</p>` : ''}
-        </div>
+        ${sectionHeaderHtml}
         <div class="card-grid">${cards}</div>
-        ${leaseSectionDisclHtml}
         </div>
       </div>`;
   }
 
   // Used Specials — renders each visible offer by Card Type
   function buildUsedSpecials(offers, el) {
-    const active = offers.filter(isVisible);
+    const active = offers.filter(o => isVisible(o) && o['Card Type']);
     if (!active.length) { el.style.display = 'none'; return; }
 
     // Separate by card type, preserving order
@@ -567,8 +597,9 @@
 
 
   async function buildSpecialPrograms(offers, el) {
-    const active = offers.filter(isVisible);
+    const active = offers.filter(o => isVisible(o) && o['Title']);
     if (!active.length) { el.style.display = 'none'; return; }
+    const sectionHeaderHtml = await buildSectionHeader(offers);
 
     let eyebrows = active.map(o => o['Eyebrow']);
     let titles   = active.map(o => o['Title']);
@@ -618,11 +649,7 @@
       <div id="programs" class="section section-alt acs-oem-brand">
         <span class="scroll-target"></span>
         <div class="section-inner">
-        <div class="section-header">
-          <p class="section-eyebrow">${esc(t('programsSectionEyebrow'))}</p>
-          <h2 class="section-title acs-bold">${esc(t('programsSectionTitle'))}</h2>
-          <p class="section-sub">${esc(t('programsSectionSub'))}</p>
-        </div>
+        ${sectionHeaderHtml}
         <div class="promo-grid">${cards}</div>
         </div>
       </div>`;
