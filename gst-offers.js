@@ -187,12 +187,26 @@
     offerBarPmtsSub:     'first 3 months',
     offerBarHelpLbl:     'We Can Help',
     offerBarHelpSub:     'Bad or no credit',
+    incBarTitle:         'Every Lease Includes:',
+    incBarSub:           'All items at no added cost.',
     navLabel:               'Specials',
     navTripleZero:          'Triple Zero Sale',
     navGettelsGotIt:        "Gettel's Got It!",
     navZeroDownLeases:      '$0 Down Leases',
     navSpecialPrograms:     'Special Programs',
   };
+
+  // incTags translated separately to avoid delimiter mangling in the main UI batch
+  const INC_TAGS_EN = [
+    '✓ Complimentary Maintenance — Full Lease',
+    '✓ 12,000 Miles / Year',
+    '✓ $0 Security Deposit',
+    '✓ Dealer Documentation Fee',
+    '✓ E-Registration Filing Fee',
+    '✓ Lease Acquisition Fee',
+    '✓ Full Tank of Gas',
+  ];
+  let incTagsTranslated = INC_TAGS_EN;
 
   let UI = { ...UI_EN };
 
@@ -226,6 +240,8 @@
 
   async function translateUI() {
     if (!IS_ES) return;
+    // Translate incTags as a clean separate batch
+    incTagsTranslated = await translateBatch([...INC_TAGS_EN]);
     const keys   = Object.keys(UI_EN);
     const flat   = keys.map(k => Array.isArray(UI_EN[k]) ? UI_EN[k].join(' ||| ') : UI_EN[k]);
     const xlated = await translateBatch(flat);
@@ -331,8 +347,8 @@
               <div class="tz-badges">
                 <div class="tz-badge"><div class="tz-val">${esc(aprRate)}</div>${aprTerm  ? `<div class="tz-term">${esc(aprTerm)}</div>`  : ''}</div>
                 <div class="tz-badge"><div class="tz-val">${esc(badge2Lbl)}</div>${badge2Sub ? `<div class="tz-term">${esc(badge2Sub)}</div>` : ''}</div>
+                ${pmtsBar ? `<div class="tz-badge"><div class="tz-val">${esc(pmtsBar)}</div></div>` : ''}
               </div>
-              ${pmtsBar ? `<div class="tz-pmts-bar">${esc(pmtsBar)}</div>` : ''}
             </div>
             <div class="v-card-cta">
               <a href="${esc(v['Shop URL'])}" class="btn btn-primary">${esc(t('shopNow'))}</a>
@@ -443,6 +459,8 @@
       }
     }
 
+    const incTags = incTagsTranslated.map(tag => '<span class="inc-tag">' + esc(tag) + '</span>').join('');
+
     const cards = active.map((v, vi) => {
       const maint = (v['Maint. Badge'] || '').toLowerCase() === 'yes';
       const flip  = (v['Flip Image'] || '').toLowerCase() === 'yes';
@@ -496,6 +514,13 @@
         <span class="scroll-target"></span>
         <div class="section-inner">
         ${sectionHeaderHtml}
+        <div class="includes-bar">
+          <div class="includes-bar-label">
+            <p>${esc(t('incBarTitle'))}</p>
+            <p>${esc(t('incBarSub'))}</p>
+          </div>
+          <div class="includes-tags">${incTags}</div>
+        </div>
         <div class="card-grid">${cards}</div>
         </div>
       </div>`;
