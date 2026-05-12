@@ -136,7 +136,8 @@ async function updateOffersFromSheet() {
         'offer-4-headline':   'Offer 4 Headline',
         'offer-4-terms':      'Offer 4 Terms',
         'offer-4-disclaimer': 'Offer 4 Disclaimer',
-        'shopping-link-text': 'Shopping Link Text'
+        'shopping-link-text': 'Shopping Link Text',
+        'tagline':            'Tagline'
     };
 
     const linkMap = {
@@ -148,6 +149,7 @@ async function updateOffersFromSheet() {
 
     const pageType = getPageType();
     const visibleAnchors = [];
+    const usedAnchorIds = new Set();
 
     document.querySelectorAll('.car-offer').forEach(section => {
         const modelKey = section.dataset.model;
@@ -205,13 +207,47 @@ async function updateOffersFromSheet() {
             } catch {}
         });
 
-        // Collect for anchor nav — only if section has an id and a non-empty label
-        const sectionId = section.id;
+        // Compute nav label first — drives both the section anchor ID and the nav text
         const navLabel = (data['Nav Label']?.value || data['Model Title']?.value || '').trim();
-        if (sectionId && navLabel) {
-            visibleAnchors.push({ id: sectionId, label: navLabel });
+
+        // Derive a sanitized anchor ID from the nav label and apply it to section.id
+        // (with duplicate guard). Falls back to any hardcoded HTML id if navLabel is empty.
+        if (navLabel) {
+            const cleanId = navLabel.toLowerCase()
+                .replace(/[^a-z0-9-]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+            if (cleanId) {
+                if (usedAnchorIds.has(cleanId)) {
+                    console.warn(`[VV Volvo] Duplicate Anchor ID "${cleanId}" on ${modelKey} — skipping. First-in-DOM wins.`);
+                } else {
+                    section.id = cleanId;
+                }
+            }
+        }
+        if (section.id) usedAnchorIds.add(section.id);
+
+        // Collect for anchor nav — only if section has an id and a non-empty label
+        if (section.id && navLabel) {
+            visibleAnchors.push({ id: section.id, label: navLabel });
         }
     });
+
+    // ---------- POPULATE PAGE-LEVEL TAGLINE ----------
+    // Targets any .tagline element NOT inside a .car-offer. Reads the first
+    // non-empty `Tagline` value across all columns, so filling in Tagline on
+    // any one column in the sheet (typically VV-Offer1) populates this.
+    const pageTaglineEls = Array.from(document.querySelectorAll('.tagline'))
+        .filter(el => !el.closest('.car-offer'));
+
+    if (pageTaglineEls.length) {
+        let taglineText = '';
+        for (const modelName of Object.keys(modelData)) {
+            const val = modelData[modelName]?.['Tagline']?.value;
+            if (val && String(val).trim()) { taglineText = String(val).trim(); break; }
+        }
+        pageTaglineEls.forEach(el => { el.textContent = taglineText; });
+    }
 
     // ---------- REBUILD ANCHOR NAVS ----------
     // Targets any element with data-nav="links" — add this attribute to the
