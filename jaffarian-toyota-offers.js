@@ -158,16 +158,15 @@ async function updateOffersFromSheet() {
       imgEl.alt = data["Model Title"]?.value || '';
     }
 
-    // ---------- Call Out (green banner at top of card) ----------
+    // ---------- Call Out (green banner inside right column, sheet-driven) ----------
     const calloutVal = data["Call Out"]?.value;
-    const calloutWrap = section.querySelector('.call-out-band');
-    const calloutEl = section.querySelector('.call-out');
-    if (calloutWrap && calloutEl) {
+    const calloutEl = section.querySelector('.offer-callout');
+    if (calloutEl) {
       if (calloutVal && !isHide(calloutVal)) {
         calloutEl.textContent = calloutVal;
-        calloutWrap.style.display = "";
+        calloutEl.style.display = "";
       } else {
-        calloutWrap.style.display = "none";
+        calloutEl.style.display = "none";
       }
     }
 
@@ -208,6 +207,33 @@ async function updateOffersFromSheet() {
         if (isEmpty(tt) && isEmpty(tv)) block.style.display = "none";
         else block.style.display = "";
       }
+    }
+
+    // ---------- Details column hide (when all 3 details are empty) ----------
+    for (let n = 1; n <= OFFER_COUNT; n++) {
+      const d1 = isEmpty(data[`Offer ${n} Detail 1`]?.value);
+      const d2 = isEmpty(data[`Offer ${n} Detail 2`]?.value);
+      const d3 = isEmpty(data[`Offer ${n} Detail 3`]?.value);
+      const block = section.querySelector(`.offer-${n}-details-block`);
+      if (block) {
+        block.style.display = (d1 && d2 && d3) ? "none" : "";
+      }
+    }
+
+    // ---------- Vertical-rule divider visibility (between Special/Term/Details) ----------
+    // vhr-1 sits between Special and Term  → show when Term block is visible
+    // vhr-2 sits between Term and Details  → show when Details block is visible
+    // (When Term is hidden, vhr-2 visually becomes the Special↔Details divider via flex collapse.)
+    for (let n = 1; n <= OFFER_COUNT; n++) {
+      const termVisible = !isEmpty(data[`Offer ${n} Term Type`]?.value) ||
+                          !isEmpty(data[`Offer ${n} Term`]?.value);
+      const detailsVisible = !isEmpty(data[`Offer ${n} Detail 1`]?.value) ||
+                             !isEmpty(data[`Offer ${n} Detail 2`]?.value) ||
+                             !isEmpty(data[`Offer ${n} Detail 3`]?.value);
+      const vhr1 = section.querySelector(`.offer-${n}-vhr-1`);
+      const vhr2 = section.querySelector(`.offer-${n}-vhr-2`);
+      if (vhr1) vhr1.style.display = termVisible ? "" : "none";
+      if (vhr2) vhr2.style.display = detailsVisible ? "" : "none";
     }
 
     // ---------- Detail bar pipe separators (hide pipes when neighbors empty) ----------
