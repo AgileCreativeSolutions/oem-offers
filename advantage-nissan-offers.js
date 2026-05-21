@@ -16,7 +16,7 @@
  *   Columns K–P  : Reserve slots for future vehicles (leave blank or fill as needed)
  *
  * Field rows (column A label → what the script reads):
- *   Visibility | Offer Image | Model Title 1 | Model Title 2 | Model Details |
+ *   Visibility | Ribbon Text | Offer Image | Model Title 1 | Model Title 2 | Model Details |
  *   Header Label 1 | Header Value 1 | Header Label 2 | Header Value 2 |
  *   Lease | Tab Label | Lease | Payment | Lease | Down | Lease | Down Label |
  *   Lease | Months | Lease | Miles |
@@ -35,6 +35,10 @@
  * Visibility:
  *   Leave blank or set to "show" to display the vehicle.
  *   Set to "hide" to suppress it without deleting the row.
+ *
+ * Ribbon Text:
+ *   Optional promotional banner across the top of the card (e.g. "Enhanced Savings on Kicks!").
+ *   Leave blank to keep the legacy thin red bar.
  */
 
 (function () {
@@ -294,10 +298,17 @@
 
     var tabHtml = buildTabs(r, id);
 
+    // Ribbon — empty = thin red bar; with text = promo banner
+    var ribbonHtml = '<div class="acs-card-ribbon">' +
+      (r['Ribbon Text'] ? esc(r['Ribbon Text']) : '') +
+      '</div>';
+
     return '<div class="acs-twelve acs-six-2xl acs-columns">' +
       '<div id="' + id + '" class="acs-row acs-mb-8">' +
         '<div class="acs-twelve">' +
           '<div class="acs-offer-cell">' +
+
+            ribbonHtml +
 
             // Header row
             '<div class="acs-row">' +
