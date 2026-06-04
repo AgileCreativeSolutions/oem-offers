@@ -358,7 +358,7 @@
         </div>`;
     }).join('');
     el.innerHTML = `
-      <div id="triple-zero" class="section section-alt acs-oem-brand">
+      <div id="triple-zero" class="section section-gray acs-oem-brand">
         <span class="scroll-target"></span>
         <div class="section-inner">
         ${sectionHeaderHtml}
@@ -510,7 +510,7 @@
     }).join('');
 
     el.innerHTML = `
-      <div id="zero-down-leases" class="section section-gray acs-oem-brand">
+      <div id="zero-down-leases" class="section section-alt acs-oem-brand">
         <span class="scroll-target"></span>
         <div class="section-inner">
         ${sectionHeaderHtml}
@@ -738,10 +738,10 @@
         </div>
       </div>`;
     } else {
-      root.append(tzEl, ggEl, leaseEl, programsEl);
+      root.append(leaseEl, tzEl, ggEl, programsEl);
       // Show skeleton placeholders while data loads
       tzEl.innerHTML = `
-      <div class="skeleton-section">
+      <div class="skeleton-section skeleton-alt">
         <div class="section-inner">
           <div class="skel-header">
             <div class="skel skel-eyebrow"></div>
@@ -768,7 +768,7 @@
         </div>
       </div>`;
       leaseEl.innerHTML = `
-      <div class="skeleton-section skeleton-alt">
+      <div class="skeleton-section">
         <div class="section-inner">
           <div class="skel-header">
             <div class="skel skel-eyebrow"></div>
