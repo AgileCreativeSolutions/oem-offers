@@ -53,9 +53,13 @@ function isEmpty(val) {
   return val == null || String(val).trim() === '';
 }
 
-// Returns true if every value in the supplied key list is empty for this model.
 function allEmpty(data, keys) {
   return keys.every(k => isEmpty(data[k]?.value));
+}
+
+function val(data, key) {
+  const v = data[key]?.value;
+  return isEmpty(v) ? '' : String(v).trim();
 }
 
 // ---------- MAIN ----------
@@ -67,8 +71,6 @@ async function updateOffersFromSheet() {
   const modelData = await fetchAndMergeTabs(csvTabs);
 
   // ---------- Page header (sheet-driven via "Header" column) ----------
-  // "Header Image":    URL  → show image     | blank → hide image | "hide" → hide image
-  // "Header Tagline":  text → replace H2     | blank → keep HTML default | "hide" → hide H2
   const headerData = modelData["Header"];
   if (headerData) {
     const headerImgEl = document.querySelector('.header-image');
@@ -90,55 +92,26 @@ async function updateOffersFromSheet() {
         headerTaglineEl.textContent = String(tagline).trim();
         headerTaglineEl.style.display = "";
       }
-      // blank → leave the HTML default text alone
     }
   }
 
-  // Sheet field -> HTML class
-  const textMap = {
-    "model-title":          "Model Title",
-    "model-details":        "Model Details",
-    "offer-1-special-type": "Offer 1 Special Type",
-    "offer-1-special":      "Offer 1 Special",
-    "offer-1-term-type":    "Offer 1 Term Type",
-    "offer-1-term":         "Offer 1 Term",
-    "offer-1-detail-1":     "Offer 1 Detail 1",
-    "offer-1-detail-2":     "Offer 1 Detail 2",
-    "offer-1-detail-3":     "Offer 1 Detail 3",
-    "offer-1-disclaimer":   "Offer 1 Disclaimer",
-    "offer-2-special-type": "Offer 2 Special Type",
-    "offer-2-special":      "Offer 2 Special",
-    "offer-2-term-type":    "Offer 2 Term Type",
-    "offer-2-term":         "Offer 2 Term",
-    "offer-2-detail-1":     "Offer 2 Detail 1",
-    "offer-2-detail-2":     "Offer 2 Detail 2",
-    "offer-2-detail-3":     "Offer 2 Detail 3",
-    "offer-2-disclaimer":   "Offer 2 Disclaimer",
-    "offer-3-special-type": "Offer 3 Special Type",
-    "offer-3-special":      "Offer 3 Special",
-    "offer-3-term-type":    "Offer 3 Term Type",
-    "offer-3-term":         "Offer 3 Term",
-    "offer-3-detail-1":     "Offer 3 Detail 1",
-    "offer-3-detail-2":     "Offer 3 Detail 2",
-    "offer-3-detail-3":     "Offer 3 Detail 3",
-    "offer-3-disclaimer":   "Offer 3 Disclaimer",
-    "offer-4-special-type": "Offer 4 Special Type",
-    "offer-4-special":      "Offer 4 Special",
-    "offer-4-term-type":    "Offer 4 Term Type",
-    "offer-4-term":         "Offer 4 Term",
-    "offer-4-detail-1":     "Offer 4 Detail 1",
-    "offer-4-detail-2":     "Offer 4 Detail 2",
-    "offer-4-detail-3":     "Offer 4 Detail 3",
-    "offer-4-disclaimer":   "Offer 4 Disclaimer",
-    "cta-text":             "CTA Text"
-  };
+  const OFFER_COUNT = 4;
 
-  // Keys that, if all empty for a given Offer N, mean that whole sub-card should hide
+  // Merged term line: "Term | Detail 1 | Detail 2 | Detail 3" (Term Type label dropped)
+  function buildTermLine(data, n) {
+    const term    = val(data, `Offer ${n} Term`);
+    const details = [
+      val(data, `Offer ${n} Detail 1`),
+      val(data, `Offer ${n} Detail 2`),
+      val(data, `Offer ${n} Detail 3`)
+    ].filter(Boolean);
+    return [term, ...details].filter(Boolean).join('  |  ');
+  }
+
   const offerKeysFor = (n) => [
     `Offer ${n} Special Type`, `Offer ${n} Special`, `Offer ${n} Term Type`, `Offer ${n} Term`,
     `Offer ${n} Detail 1`, `Offer ${n} Detail 2`, `Offer ${n} Detail 3`
   ];
-  const OFFER_COUNT = 4;
 
   document.querySelectorAll('.car-offer').forEach(section => {
     const modelKey = section.dataset.model;
@@ -147,7 +120,19 @@ async function updateOffersFromSheet() {
     // Hide entire card if no data or Visibility = hide
     if (!data || (data["Visibility"] && isHide(data["Visibility"].value))) {
       section.style.display = "none";
+      section.classList.remove('is-loading');
       return;
+    }
+
+    // ---------- Model header ----------
+    const titleEl = section.querySelector('.model-title');
+    if (titleEl) titleEl.textContent = val(data, "Model Title");
+
+    const detailsEl = section.querySelector('.model-details');
+    if (detailsEl) {
+      const md = val(data, "Model Details");
+      detailsEl.textContent = md;
+      detailsEl.style.display = md ? "" : "none";
     }
 
     // ---------- Offer Image ----------
@@ -155,10 +140,10 @@ async function updateOffersFromSheet() {
     const imageObj = data["Offer Image"];
     if (imgEl && imageObj?.value) {
       imgEl.src = imageObj.value;
-      imgEl.alt = data["Model Title"]?.value || '';
+      imgEl.alt = val(data, "Model Title");
     }
 
-    // ---------- Call Out (green banner inside right column, sheet-driven) ----------
+    // ---------- Call Out (green banner) ----------
     const calloutVal = data["Call Out"]?.value;
     const calloutEl = section.querySelector('.offer-callout');
     if (calloutEl) {
@@ -170,123 +155,83 @@ async function updateOffersFromSheet() {
       }
     }
 
-    // ---------- Plain text fields ----------
-    Object.entries(textMap).forEach(([className, key]) => {
-      const val = data[key]?.value;
-      const el = section.querySelector(`.${className}`);
-      if (!el) return;
-      if (isEmpty(val)) {
-        // Hide labels (the *-type elements) when blank so the value stands alone.
-        // Hide -term too when blank (works with the term-block hide below).
-        // Leave other empties as empty text content (won't visually impact).
-        if (className.endsWith('-special-type') ||
-            className.endsWith('-term-type')   ||
-            className.endsWith('-term')        ||
-            className.endsWith('-special')     ||
-            className.endsWith('-detail-1')    ||
-            className.endsWith('-detail-2')    ||
-            className.endsWith('-detail-3')    ||
-            className.endsWith('-disclaimer')  ||
-            className === 'model-details') {
-          el.style.display = "none";
-        } else {
-          el.textContent = '';
-        }
-      } else {
-        el.textContent = val;
-        el.style.display = "";
-      }
-    });
-
-    // ---------- Term column hide (when both Term Type and Term are empty) ----------
-    for (let n = 1; n <= OFFER_COUNT; n++) {
-      const tt = data[`Offer ${n} Term Type`]?.value;
-      const tv = data[`Offer ${n} Term`]?.value;
-      const block = section.querySelector(`.offer-${n}-term-block`);
-      if (block) {
-        if (isEmpty(tt) && isEmpty(tv)) block.style.display = "none";
-        else block.style.display = "";
-      }
-    }
-
-    // ---------- Details column hide (when all 3 details are empty) ----------
-    for (let n = 1; n <= OFFER_COUNT; n++) {
-      const d1 = isEmpty(data[`Offer ${n} Detail 1`]?.value);
-      const d2 = isEmpty(data[`Offer ${n} Detail 2`]?.value);
-      const d3 = isEmpty(data[`Offer ${n} Detail 3`]?.value);
-      const block = section.querySelector(`.offer-${n}-details-block`);
-      if (block) {
-        block.style.display = (d1 && d2 && d3) ? "none" : "";
-      }
-    }
-
-    // ---------- Vertical-rule divider visibility (between Special/Term/Details) ----------
-    // vhr-1 sits between Special and Term  → show when Term block is visible
-    // vhr-2 sits between Term and Details  → show when Details block is visible
-    // (When Term is hidden, vhr-2 visually becomes the Special↔Details divider via flex collapse.)
-    for (let n = 1; n <= OFFER_COUNT; n++) {
-      const termVisible = !isEmpty(data[`Offer ${n} Term Type`]?.value) ||
-                          !isEmpty(data[`Offer ${n} Term`]?.value);
-      const detailsVisible = !isEmpty(data[`Offer ${n} Detail 1`]?.value) ||
-                             !isEmpty(data[`Offer ${n} Detail 2`]?.value) ||
-                             !isEmpty(data[`Offer ${n} Detail 3`]?.value);
-      const vhr1 = section.querySelector(`.offer-${n}-vhr-1`);
-      const vhr2 = section.querySelector(`.offer-${n}-vhr-2`);
-      if (vhr1) vhr1.style.display = termVisible ? "" : "none";
-      if (vhr2) vhr2.style.display = detailsVisible ? "" : "none";
-    }
-
-    // ---------- Detail bar pipe separators (hide pipes when neighbors empty) ----------
-    for (let n = 1; n <= OFFER_COUNT; n++) {
-      const d1 = !isEmpty(data[`Offer ${n} Detail 1`]?.value);
-      const d2 = !isEmpty(data[`Offer ${n} Detail 2`]?.value);
-      const d3 = !isEmpty(data[`Offer ${n} Detail 3`]?.value);
-      const pipe1 = section.querySelector(`.offer-${n}-pipe-1`);
-      const pipe2 = section.querySelector(`.offer-${n}-pipe-2`);
-      if (pipe1) pipe1.style.display = (d1 && d2) ? "" : "none";
-      if (pipe2) pipe2.style.display = (d2 && d3) ? "" : "none";
-    }
-
-    // ---------- Sub-card hide (explicit "Offer N Card" = hide, OR all offer-N fields empty) ----------
+    // ---------- Render each offer (stacked: type / value / term line) ----------
+    const offerVisible = [];
     for (let n = 1; n <= OFFER_COUNT; n++) {
       const explicitHide = data[`Offer ${n} Card`]?.value && isHide(data[`Offer ${n} Card`].value);
       const autoHide = allEmpty(data, offerKeysFor(n));
       const cardEl = section.querySelector(`.offer-${n}-card`);
-      if (cardEl) {
-        cardEl.style.display = (explicitHide || autoHide) ? "none" : "";
+      const visible = !(explicitHide || autoHide);
+      offerVisible[n] = visible;
+
+      if (!cardEl) continue;
+      if (!visible) {
+        cardEl.style.display = "none";
+        continue;
+      }
+      cardEl.style.display = "";
+
+      const typeEl = section.querySelector(`.offer-${n}-special-type`);
+      if (typeEl) {
+        const t = val(data, `Offer ${n} Special Type`);
+        typeEl.textContent = t;
+        typeEl.style.display = t ? "" : "none";
+      }
+      const specialEl = section.querySelector(`.offer-${n}-special`);
+      if (specialEl) {
+        const s = val(data, `Offer ${n} Special`);
+        specialEl.textContent = s;
+        specialEl.style.display = s ? "" : "none";
+      }
+      const termLineEl = section.querySelector(`.offer-${n}-termline`);
+      if (termLineEl) {
+        const line = buildTermLine(data, n);
+        termLineEl.textContent = line;
+        termLineEl.style.display = line ? "" : "none";
       }
     }
 
-    // ---------- Divider text + hide (Offer 2/3/4 only) ----------
-    // Sheet value:  blank → show default "or"  |  any text → show that text  |  "hide" → hide divider
-    // Note: divider lives inside its offer-N-card, so it also hides automatically when the card hides.
+    // ---------- Dividers (gated: show only between two visible offers) ----------
     for (let n = 2; n <= OFFER_COUNT; n++) {
-      const divVal = data[`Offer ${n} Divider`]?.value;
       const dividerEl = section.querySelector(`.offer-${n}-divider`);
       const dividerTextEl = section.querySelector(`.offer-${n}-divider-text`);
       if (!dividerEl) continue;
-      if (divVal && isHide(divVal)) {
+
+      const priorVisible = offerVisible.slice(1, n).some(Boolean);
+      const divVal = data[`Offer ${n} Divider`]?.value;
+
+      if (!offerVisible[n] || !priorVisible || (divVal && isHide(divVal))) {
         dividerEl.style.display = "none";
       } else {
         dividerEl.style.display = "";
         if (dividerTextEl) {
-          const txt = (divVal && String(divVal).trim()) ? String(divVal).trim() : "or";
-          dividerTextEl.textContent = txt;
+          dividerTextEl.textContent = (divVal && String(divVal).trim())
+            ? String(divVal).trim()
+            : "or";
         }
       }
     }
 
-    // ---------- Disclaimer wrapper hide (when all disclaimers empty) ----------
-    const allDiscEmpty = [1, 2, 3, 4].every(n =>
-      isEmpty(data[`Offer ${n} Disclaimer`]?.value)
-    );
+    // ---------- Disclaimers + collapsible band ----------
+    let anyDisc = false;
+    for (let n = 1; n <= OFFER_COUNT; n++) {
+      const el = section.querySelector(`.offer-${n}-disclaimer`);
+      const dv = val(data, `Offer ${n} Disclaimer`);
+      if (el) {
+        el.textContent = dv;
+        el.style.display = dv ? "" : "none";
+        if (dv) anyDisc = true;
+      }
+    }
     const discWrap = section.querySelector('.disclaimer-band');
-    if (discWrap) discWrap.style.display = allDiscEmpty ? "none" : "";
+    if (discWrap) discWrap.style.display = anyDisc ? "" : "none";
 
     // ---------- CTA link ----------
     const ctaLinkVal = data["CTA Link"]?.value;
     const ctaEl = section.querySelector('.cta-link');
     if (ctaEl) {
+      const ctaText = data["CTA Text"]?.value;
+      if (ctaText) ctaEl.textContent = ctaText;
       if (!ctaLinkVal || isHide(ctaLinkVal)) {
         ctaEl.style.display = "none";
       } else {
@@ -294,7 +239,7 @@ async function updateOffersFromSheet() {
           const url = new URL(ctaLinkVal, location.origin);
           if (url.protocol === 'http:' || url.protocol === 'https:') {
             ctaEl.href = url.href;
-            ctaEl.style.display = "inline-flex";
+            ctaEl.style.display = "";
           }
         } catch {}
       }
@@ -307,11 +252,14 @@ async function updateOffersFromSheet() {
       if (phoneVal && !isHide(phoneVal)) {
         const digits = String(phoneVal).replace(/\D/g, '');
         callEl.href = `tel:+1${digits}`;
-        callEl.style.display = "inline-flex";
+        callEl.style.display = "";
       } else {
         callEl.style.display = "none";
       }
     }
+
+    // ---------- Reveal: drop skeleton ----------
+    section.classList.remove('is-loading');
   });
 }
 
