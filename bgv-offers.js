@@ -155,11 +155,23 @@
     if (visible === 0) container.insertAdjacentHTML('beforeend', EMPTY_STATE_HTML);
   }
 
-  function buildFilterNav() {
+  function buildFilterNav(offers) {
     var navEl = document.getElementById(NAV_ID);
     if (!navEl) return;
 
-    navEl.innerHTML = BRANDS.map(function (b, idx) {
+    // Collect the set of makes that actually have at least one visible offer.
+    var present = {};
+    (offers || []).forEach(function (o) {
+      var make = (o.make || '').toLowerCase();
+      if (make) present[make] = true;
+    });
+
+    // Keep "Show All" always; keep a brand tab only if it has offers.
+    var tabs = BRANDS.filter(function (b) {
+      return b.key === 'all' || present[b.key];
+    });
+
+    navEl.innerHTML = tabs.map(function (b, idx) {
       return '<button class="acs-filter-btn' + (idx === 0 ? ' acs-active' : '') + '" data-bgv-filter="' + b.key + '">' + b.label + '</button>';
     }).join('');
 
@@ -316,7 +328,7 @@
           return (o.visibility || '').toLowerCase() !== 'hide';
         });
 
-        buildFilterNav();
+        buildFilterNav(visible);
 
         if (!visible.length) {
           container.innerHTML = '<p class="acs-text-center acs-py-7">No specials available at this time.</p>';
