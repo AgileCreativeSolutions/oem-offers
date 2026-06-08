@@ -105,6 +105,49 @@ const MANAGER_TEXT = {
   "disclaimer": "Disclaimer"
 };
 
+// ---------- SALES EVENT BANNER ----------
+// Simple label/value sheet: col A = label, col B = value.
+async function renderSalesEventBanner(url) {
+  const hero = document.querySelector('.sales-event-hero');
+  if (!hero) return;
+  if (!url || url.includes('PASTE_BANNER_GID')) return; // not configured yet
+
+  let fields = {};
+  try {
+    const response = await fetch(url, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Banner fetch failed: ${response.status}`);
+    const parsed = parseCSV(await response.text());
+    for (const row of parsed) {
+      if (!row || !row[0]) continue;
+      fields[row[0].trim()] = (row[1] || '').trim();
+    }
+  } catch (err) {
+    console.error('[KSC] Banner fetch error:', err);
+    return;
+  }
+
+  // Visibility toggle
+  if (isHide(fields['Visibility'])) { hero.style.display = 'none'; return; }
+
+  const desktop = fields['Desktop Image'];
+  const mobile  = fields['Mobile Image'];
+  const alt     = fields['Alt Text'] || '';
+
+  // Need at least a desktop image to show anything
+  if (!desktop) { hero.style.display = 'none'; return; }
+
+  const dSource = hero.querySelector('.hero-source-desktop');
+  const mSource = hero.querySelector('.hero-source-mobile');
+  const img     = hero.querySelector('.hero-img');
+
+  if (dSource) dSource.setAttribute('srcset', desktop);
+  // Fall back to desktop image if no separate mobile image provided
+  if (mSource) mSource.setAttribute('srcset', mobile || desktop);
+  if (img) { img.src = desktop; img.alt = alt; }
+
+  hero.style.display = '';
+}
+
 // ---------- MAIN ----------
 async function updateOffersFromSheet() {
   const csvTabs = {
@@ -112,7 +155,14 @@ async function updateOffersFromSheet() {
     "Manager":  "https://docs.google.com/spreadsheets/d/e/2PACX-1vTCPBN4WLotXZGpf_pAoTMjODOhWl-w1xmNbuR109DRAu2prKROULE4Fj-T9WMSDiQZuSHuKl8JhhhY/pub?output=csv&gid=99914050"
   };
 
+  // Banner tab is a simple label/value sheet (col A = label, col B = value).
+  // Fetched separately from the card tabs. Replace gid with the new tab's gid.
+  const BANNER_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTCPBN4WLotXZGpf_pAoTMjODOhWl-w1xmNbuR109DRAu2prKROULE4Fj-T9WMSDiQZuSHuKl8JhhhY/pub?output=csv&gid=PASTE_BANNER_GID";
+
   const modelData = await fetchAndMergeTabs(csvTabs);
+
+  // ----- Sales event hero banner (simple label/value tab) -----
+  await renderSalesEventBanner(BANNER_URL);
 
   // ----- Section intros + page tagline (read first non-empty across all columns) -----
   function firstValueForTab(tab, label) {
