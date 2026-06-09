@@ -145,8 +145,10 @@ async function updateOffersFromSheet() {
 
   const modelData = await fetchAndMergeTabs(csvTabs);
 
-  // Always reveal sections at the end — even on partial/failed data — so the
-  // skeleton preloaders never spin forever.
+  // Reveal sections only AFTER the populated cards have painted. On slower
+  // platforms, flipping the class in the same frame as render shows a brief
+  // blank-card flash; a double rAF guarantees paint first. finally-guarded so
+  // skeletons never spin forever even if render throws.
   const markLoaded = () => {
     document.querySelectorAll('#special-offers, #manager-picks').forEach(el => el.classList.add('acs-loaded'));
   };
@@ -154,7 +156,7 @@ async function updateOffersFromSheet() {
   try {
     renderAll(modelData);
   } finally {
-    markLoaded();
+    requestAnimationFrame(() => requestAnimationFrame(markLoaded));
   }
 }
 
