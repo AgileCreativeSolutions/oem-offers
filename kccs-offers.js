@@ -145,19 +145,43 @@ async function updateOffersFromSheet() {
 
   const modelData = await fetchAndMergeTabs(csvTabs);
 
-  // Reveal sections only AFTER the populated cards have painted. On slower
-  // platforms, flipping the class in the same frame as render shows a brief
-  // blank-card flash; a double rAF guarantees paint first. finally-guarded so
-  // skeletons never spin forever even if render throws.
   const markLoaded = () => {
     document.querySelectorAll('#special-offers, #manager-picks').forEach(el => el.classList.add('acs-loaded'));
   };
 
   try {
     renderAll(modelData);
+    // Wait for the populated offer images to finish loading before revealing,
+    // so cards never appear with empty image boxes (the blank-card flash on
+    // slower platforms). Cap the wait so a slow/broken image can't stall the
+    // reveal indefinitely.
+    await waitForImages(['#special-offers', '#manager-picks'], 2000);
   } finally {
-    requestAnimationFrame(() => requestAnimationFrame(markLoaded));
+    markLoaded();
   }
+}
+
+// Resolve once all <img> inside the given selectors are loaded (or errored),
+// or once timeoutMs elapses — whichever comes first.
+function waitForImages(selectors, timeoutMs) {
+  return new Promise(resolve => {
+    const imgs = [];
+    selectors.forEach(sel => {
+      const root = document.querySelector(sel);
+      if (root) root.querySelectorAll('img').forEach(img => imgs.push(img));
+    });
+    const pending = imgs.filter(img => img.src && !img.complete);
+    if (!pending.length) { resolve(); return; }
+
+    let done = 0, finished = false;
+    const finish = () => { if (!finished) { finished = true; resolve(); } };
+    const tick = () => { if (++done >= pending.length) finish(); };
+    pending.forEach(img => {
+      img.addEventListener('load', tick, { once: true });
+      img.addEventListener('error', tick, { once: true });
+    });
+    setTimeout(finish, timeoutMs);
+  });
 }
 
 function renderAll(modelData) {
