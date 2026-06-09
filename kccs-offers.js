@@ -146,6 +146,8 @@ async function updateOffersFromSheet() {
   const modelData = await fetchAndMergeTabs(csvTabs);
 
   const markLoaded = () => {
+    // Reveal the populated cards (inline style beats platform CSS), then hide skeletons.
+    document.querySelectorAll('.car-offer[data-ready="1"]').forEach(s => { s.style.display = ''; });
     document.querySelectorAll('#special-offers, #manager-picks').forEach(el => el.classList.add('acs-loaded'));
   };
 
@@ -185,6 +187,11 @@ function waitForImages(selectors, timeoutMs) {
 }
 
 function renderAll(modelData) {
+
+  // Hide every card inline up front. Inline styles beat platform stylesheet
+  // rules, so the cards can't be force-shown by DDC CSS while we populate them.
+  // They're revealed inline at the end, in sync with the skeleton removal.
+  document.querySelectorAll('.car-offer').forEach(s => { s.style.display = 'none'; });
 
   // ----- Sales event hero banner (merged from Banner tab, keyed under "Value") -----
   renderSalesEventBanner(modelData["Value"]);
@@ -229,7 +236,8 @@ function renderAll(modelData) {
     if (source === "specials" && !(data["Model Title"]?.value || '').trim()) { section.style.display = "none"; return; }
     if (source === "manager"  && !(data["Model Title 1"]?.value || '').trim()) { section.style.display = "none"; return; }
 
-    section.style.display = "";
+    // Mark for reveal at the end; keep hidden during populate so no blank flash.
+    section.dataset.ready = "1";
 
     // Offer image
     const imgEl = section.querySelector(".offer-image");
