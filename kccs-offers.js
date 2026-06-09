@@ -145,6 +145,21 @@ async function updateOffersFromSheet() {
 
   const modelData = await fetchAndMergeTabs(csvTabs);
 
+  // Always reveal sections at the end — even on partial/failed data — so the
+  // skeleton preloaders never spin forever.
+  const markLoaded = () => {
+    document.querySelectorAll('#special-offers, #manager-picks').forEach(el => el.classList.add('acs-loaded'));
+  };
+
+  try {
+    renderAll(modelData);
+  } finally {
+    markLoaded();
+  }
+}
+
+function renderAll(modelData) {
+
   // ----- Sales event hero banner (merged from Banner tab, keyed under "Value") -----
   renderSalesEventBanner(modelData["Value"]);
 
