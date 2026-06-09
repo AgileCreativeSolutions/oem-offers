@@ -25,31 +25,37 @@ function parseCSV(csv) {
 // falls back to row 0 if there's no title row.
 async function fetchAndMergeTabs(tabMap) {
   const modelData = {};
-  for (const [tabName, url] of Object.entries(tabMap)) {
+  const entries = Object.entries(tabMap);
+
+  // Fetch all tabs in parallel — sequential awaits were the main load delay.
+  const results = await Promise.all(entries.map(async ([tabName, url]) => {
     try {
-      const response = await fetch(url, { cache: 'no-store' });
+      const response = await fetch(url, { cache: 'default' });
       if (!response.ok) throw new Error(`Failed to fetch: ${url}`);
-      const parsed = parseCSV(await response.text());
-      if (!parsed.length) continue;
-      let headerIdx = parsed.findIndex(r => (r[0] || '').trim().toLowerCase() === 'field');
-      if (headerIdx === -1) headerIdx = 0;
-      const fields = parsed[headerIdx];
-      const dataRows = parsed.slice(headerIdx + 1);
-      for (let col = 1; col < fields.length; col++) {
-        const modelName = fields[col];
-        if (!modelName) continue;
-        modelData[modelName] = modelData[modelName] || {};
-        // Stash which tab this column came from, for section intros
-        modelData[modelName].__tab = tabName;
-        for (const row of dataRows) {
-          if (!row || row.length <= col) continue;
-          const label = row[0];
-          if (!label) continue;
-          modelData[modelName][label] = { value: row[col] };
-        }
-      }
+      return { tabName, parsed: parseCSV(await response.text()) };
     } catch (err) {
       console.error(`Error processing ${tabName}:`, err);
+      return { tabName, parsed: [] };
+    }
+  }));
+
+  for (const { tabName, parsed } of results) {
+    if (!parsed.length) continue;
+    let headerIdx = parsed.findIndex(r => (r[0] || '').trim().toLowerCase() === 'field');
+    if (headerIdx === -1) headerIdx = 0;
+    const fields = parsed[headerIdx];
+    const dataRows = parsed.slice(headerIdx + 1);
+    for (let col = 1; col < fields.length; col++) {
+      const modelName = fields[col];
+      if (!modelName) continue;
+      modelData[modelName] = modelData[modelName] || {};
+      modelData[modelName].__tab = tabName;
+      for (const row of dataRows) {
+        if (!row || row.length <= col) continue;
+        const label = row[0];
+        if (!label) continue;
+        modelData[modelName][label] = { value: row[col] };
+      }
     }
   }
   return modelData;
@@ -146,44 +152,16 @@ async function updateOffersFromSheet() {
   const modelData = await fetchAndMergeTabs(csvTabs);
 
   const markLoaded = () => {
-    // Reveal the populated cards (inline style beats platform CSS), then hide skeletons.
+    // Reveal populated cards (inline beats platform CSS) and clear skeletons together.
     document.querySelectorAll('.car-offer[data-ready="1"]').forEach(s => { s.style.display = ''; });
     document.querySelectorAll('#special-offers, #manager-picks').forEach(el => el.classList.add('acs-loaded'));
   };
 
   try {
     renderAll(modelData);
-    // Wait for the populated offer images to finish loading before revealing,
-    // so cards never appear with empty image boxes (the blank-card flash on
-    // slower platforms). Cap the wait so a slow/broken image can't stall the
-    // reveal indefinitely.
-    await waitForImages(['#special-offers', '#manager-picks'], 2000);
   } finally {
     markLoaded();
   }
-}
-
-// Resolve once all <img> inside the given selectors are loaded (or errored),
-// or once timeoutMs elapses — whichever comes first.
-function waitForImages(selectors, timeoutMs) {
-  return new Promise(resolve => {
-    const imgs = [];
-    selectors.forEach(sel => {
-      const root = document.querySelector(sel);
-      if (root) root.querySelectorAll('img').forEach(img => imgs.push(img));
-    });
-    const pending = imgs.filter(img => img.src && !img.complete);
-    if (!pending.length) { resolve(); return; }
-
-    let done = 0, finished = false;
-    const finish = () => { if (!finished) { finished = true; resolve(); } };
-    const tick = () => { if (++done >= pending.length) finish(); };
-    pending.forEach(img => {
-      img.addEventListener('load', tick, { once: true });
-      img.addEventListener('error', tick, { once: true });
-    });
-    setTimeout(finish, timeoutMs);
-  });
 }
 
 function renderAll(modelData) {
