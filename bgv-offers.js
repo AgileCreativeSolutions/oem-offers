@@ -252,7 +252,7 @@
     var disclaimerHTML = (o.disclaimer || '')
       .split(/\n+/)
       .filter(function (p) { return p.trim(); })
-      .map(function (p) { return '<p class="acs-text-3 acs-lh-5 acs-pt-1 acs-opacity-60">' + p.trim() + '</p>'; })
+      .map(function (p) { return '<p class="acs-text-4 acs-lh-6 acs-pt-1">' + p.trim() + '</p>'; })
       .join('');
 
     return [
