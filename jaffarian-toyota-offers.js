@@ -19,7 +19,7 @@ async function fetchAndMergeTabs(tabMap) {
   const modelData = {};
   for (const [tabName, url] of Object.entries(tabMap)) {
     try {
-      const response = await fetch(url, { cache: 'no-store' });
+      const response = await fetch(url, { cache: 'default' });
       if (!response.ok) throw new Error(`Failed to fetch: ${url}`);
       const parsed = parseCSV(await response.text());
       if (!parsed.length) continue;
@@ -57,7 +57,7 @@ function allEmpty(data, keys) {
   return keys.every(k => isEmpty(data[k]?.value));
 }
 
-function val(data, key) {
+function cellVal(data, key) {
   const v = data[key]?.value;
   return isEmpty(v) ? '' : String(v).trim();
 }
@@ -99,11 +99,11 @@ async function updateOffersFromSheet() {
 
   // Merged term line: "Term | Detail 1 | Detail 2 | Detail 3" (Term Type label dropped)
   function buildTermLine(data, n) {
-    const term    = val(data, `Offer ${n} Term`);
+    const term    = cellVal(data, `Offer ${n} Term`);
     const details = [
-      val(data, `Offer ${n} Detail 1`),
-      val(data, `Offer ${n} Detail 2`),
-      val(data, `Offer ${n} Detail 3`)
+      cellVal(data, `Offer ${n} Detail 1`),
+      cellVal(data, `Offer ${n} Detail 2`),
+      cellVal(data, `Offer ${n} Detail 3`)
     ].filter(Boolean);
     return [term, ...details].filter(Boolean).join('  |  ');
   }
@@ -114,23 +114,23 @@ async function updateOffersFromSheet() {
   ];
 
   document.querySelectorAll('.car-offer').forEach(section => {
+   try {
     const modelKey = section.dataset.model;
     const data = modelData[modelKey];
 
     // Hide entire card if no data or Visibility = hide
     if (!data || (data["Visibility"] && isHide(data["Visibility"].value))) {
       section.style.display = "none";
-      section.classList.remove('is-loading');
       return;
     }
 
     // ---------- Model header ----------
     const titleEl = section.querySelector('.model-title');
-    if (titleEl) titleEl.textContent = val(data, "Model Title");
+    if (titleEl) titleEl.textContent = cellVal(data, "Model Title");
 
     const detailsEl = section.querySelector('.model-details');
     if (detailsEl) {
-      const md = val(data, "Model Details");
+      const md = cellVal(data, "Model Details");
       detailsEl.textContent = md;
       detailsEl.style.display = md ? "" : "none";
     }
@@ -140,7 +140,7 @@ async function updateOffersFromSheet() {
     const imageObj = data["Offer Image"];
     if (imgEl && imageObj?.value) {
       imgEl.src = imageObj.value;
-      imgEl.alt = val(data, "Model Title");
+      imgEl.alt = cellVal(data, "Model Title");
     }
 
     // ---------- Call Out (green banner) ----------
@@ -173,13 +173,13 @@ async function updateOffersFromSheet() {
 
       const typeEl = section.querySelector(`.offer-${n}-special-type`);
       if (typeEl) {
-        const t = val(data, `Offer ${n} Special Type`);
+        const t = cellVal(data, `Offer ${n} Special Type`);
         typeEl.textContent = t;
         typeEl.style.display = t ? "" : "none";
       }
       const specialEl = section.querySelector(`.offer-${n}-special`);
       if (specialEl) {
-        const s = val(data, `Offer ${n} Special`);
+        const s = cellVal(data, `Offer ${n} Special`);
         specialEl.textContent = s;
         specialEl.style.display = s ? "" : "none";
       }
@@ -216,7 +216,7 @@ async function updateOffersFromSheet() {
     let anyDisc = false;
     for (let n = 1; n <= OFFER_COUNT; n++) {
       const el = section.querySelector(`.offer-${n}-disclaimer`);
-      const dv = val(data, `Offer ${n} Disclaimer`);
+      const dv = cellVal(data, `Offer ${n} Disclaimer`);
       if (el) {
         el.textContent = dv;
         el.style.display = dv ? "" : "none";
@@ -258,8 +258,12 @@ async function updateOffersFromSheet() {
       }
     }
 
-    // ---------- Reveal: drop skeleton ----------
-    section.classList.remove('is-loading');
+    } catch (err) {
+      console.error(`Error rendering ${section.dataset.model}:`, err);
+    } finally {
+      // ---------- Reveal: always drop skeleton, even on error ----------
+      section.classList.remove('is-loading');
+    }
   });
 }
 
