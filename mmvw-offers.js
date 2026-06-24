@@ -216,7 +216,7 @@
 
       // Disclaimer rendered raw so ©, *, &reg; etc. display correctly.
       var disclaimerHTML = o.disclaimer
-        ? '<hr><p class="acs-text-3 acs-lh-7 acs-my-3 acs-gray">' + o.disclaimer + '</p>'
+        ? '<hr><p class="acs-text-4 acs-lh-6 acs-my-3">' + o.disclaimer + '</p>'
         : '';
 
       html +=
