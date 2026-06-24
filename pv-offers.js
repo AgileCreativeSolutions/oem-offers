@@ -158,11 +158,11 @@
         if (showOffer4 && o4Value) panelHTML += buildPanel(o4Label || 'Offer', o4Value, 4, o4Term, o4Note);
 
         var stlHTML = showLease
-          ? '<div class="acs-mt-2 acs-columns acs-text-center-xl"><p class="acs-bold acs-text-5 acs-lh-4 acs-my-2">Interested in a <span class="acs-nowrap">Short Term Lease</span> Quote? <a href="#/" onclick="liteModal.open(\'#shorttermleasepopup\')" tabindex="0" class="acs-link-accent acs-underline" data-mv="' + esc(model) + ' Recharge">Learn More +</a></p></div>'
+          ? '<div class="acs-mt-2 acs-columns acs-text-center-xl"><p class="acs-bold acs-text-5 acs-lh-4 acs-my-2">Interested in a <span class="acs-nowrap">Short Term Lease</span> Quote? <a href="#/" onclick="liteModal.open(\'#shorttermleasepopup\')" tabindex="0" class="acs-link-accent" data-mv="' + esc(model) + ' Recharge">Learn More +</a></p></div>'
           : '';
 
         var discHTML = (disc1 || disc2)
-          ? '<details class="acs-text-4 acs-lh-8 acs-px-5"><summary>Disclaimer</summary>' + (disc1 ? '<p class="acs-text-3 acs-mb-2">' + esc(disc1) + '</p>' : '') + (disc2 ? '<p class="acs-text-3 acs-mb-2">' + esc(disc2) + '</p>' : '') + '</details>'
+          ? '<details class="acs-text-4 acs-lh-8 acs-pt-2 acs-px-5"><summary>Disclaimer</summary>' + (disc1 ? '<p class="acs-text-4 acs-mb-2">' + esc(disc1) + '</p>' : '') + (disc2 ? '<p class="acs-text-3 acs-mb-2">' + esc(disc2) + '</p>' : '') + '</details>'
           : '';
 
         cards +=
@@ -175,8 +175,8 @@
                 '<div class="acs-row">' + panelHTML + stlHTML + '</div>' +
                 '<hr>' +
                 '<div class="acs-row acs-align-self-end">' +
-                  '<div class="acs-six-sm acs-five-xl acs-p-2 acs-align-self-end"><a href="' + esc(cta1Url) + '" class="acs-button5">' + esc(cta1Text) + '</a></div>' +
-                  '<div class="acs-six-sm acs-twelve acs-six-xl acs-p-2 acs-align-self-end"><a href="' + esc(cta2Url) + '" class="acs-link-accent3">' + esc(cta2Text) + ' &gt;</a></div>' +
+                  '<div class="acs-six-sm acs-five-xl acs-p-2 acs-align-self-end"><a href="' + esc(cta1Url) + '" class="acs-button">' + esc(cta1Text) + '</a></div>' +
+                  '<div class="acs-six-sm acs-twelve acs-six-xl acs-p-2 acs-align-self-end"><a href="' + esc(cta2Url) + '" class="acs-link-accent acs-volvo-icon">' + esc(cta2Text) + ' </a></div>' +
                 '</div>' +
                 discHTML +
               '</div></div>' +
