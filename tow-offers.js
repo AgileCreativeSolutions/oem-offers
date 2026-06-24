@@ -122,7 +122,7 @@
       '      <div class="acs-ten-md acs-twelve acs-ma">',
       '        <a href="' + v['Shop URL'] + '" class="acs-button acs-button-fw acs-mt-6">Shop Certified</a>',
       '        <a href="' + v['Why Certified URL'] + '" class="acs-button2 acs-button-fw acs-mt-6">Why Certified</a>',
-      '        <p class="acs-text-4 acs-lh-6 acs-mt-4 acs-opacity-60">' + v['Disclaimer'] + '</p>',
+      '        <p class="acs-text-4 acs-lh-6 acs-mt-4">' + v['Disclaimer'] + '</p>',
       '      </div>',
       '    </div>',
       '  </div>',
