@@ -1,38 +1,39 @@
 /**
- * gst-specials.js
- * Gettel Stadium Toyota — Dynamic Specials Insertion
+ * gst-offers.js
+ * Gettel Stadium Toyota — Dynamic Specials Insertion (Framework / VV-style build)
  * AgileCreativeSolutions / oem-offers
  *
- * Usage — same tag on both pages:
- *   <div id="gst-specials"></div>
- *   <script src="https://AgileCreativeSolutions.github.io/oem-offers/gst-specials.js"></script>
+ * This build populates STATIC framework card scaffolding (acs- classes) by
+ * cloning a template card per offer and filling it via class selectors —
+ * the Boston Volvo population pattern — rather than writing innerHTML.
  *
- * Sheet structure (GMCD-style): fields = rows, offers = columns.
- * Four tabs: "Triple Zero" | "Gettel's Got It" | "Real $0 Down Leases" | "Used Specials"
+ * Data layer (fetch, parser, translation, cache) is preserved from the
+ * prior custom build. Only the render/builder layer changed.
+ *
+ * Sheet structure (field rows × offer columns). Tabs:
+ *   lease    (gid 479064372) — "Special Offers": vehicle cards, 4 offers each
+ *   tz_slide (NEW tab)       — Triple Zero event slide image URLs
+ *   gg       (gid 623929825) — Gettel's Got It
+ *   programs (gid 2028269504)— Special Programs
  *
  * Visibility row: blank = show, type "hide" to suppress.
- * Card Type row (Used Specials): hero | apr-card | program-card
  *
  * Spanish page (/ofertas-especiales): auto-detects URL, auto-translates all
  * visible text via Google Translate, caches in localStorage for 24 hrs.
- * Used Specials section is skipped on the Spanish page.
  */
 
 (function () {
   'use strict';
 
-  const ROOT_ID   = 'gst-specials';
   const PUBLISHED_ID = '2PACX-1vT_NkCgmMIPQofGnlqTNF__0OtnWwEj727RWUP2Up9L0bnQyz_TDiRoh3GDkitU-Lc-4j9md7-3OFeX';
   const CACHE_TTL = 24 * 60 * 60 * 1000;
   const IS_ES = /ofertas-especiales|spanish-specials-test-page/i.test(window.location.pathname);
 
   const TABS = {
-    tz_banner: '34597066',
-    tz:        '891998203',
-    gg:        '623929825',
-    lease:     '479064372',
-    programs:  '2028269504',
-    used:      '437612271',
+    lease:    '479064372',   // "Special Offers" — vehicle cards
+    tz_slide: '1826732084', // NEW tab — Triple Zero slide image
+    gg:       '623929825',
+    programs: '2028269504',
   };
 
   // ── CSV fetch ──────────────────────────────────────────────────────
@@ -67,17 +68,14 @@
   }
 
   /**
-   * GMCD-style: fields are rows, offers are columns.
-   * Row 0 = banner (skip), Row 1 = column headers, Col 0 = field name.
-   * Returns array of objects, one per offer column.
+   * Field rows × offer columns.
+   * Row 0 = banner (skip), header row = first row whose col 0 is "Field",
+   * Col 0 = field name. Returns one object per offer column.
    */
   function csvToOffers(text) {
     const rows = parseCsv(text);
     if (rows.length < 2) return [];
 
-    // Auto-detect header row — find the first row where col 0 is "Field"
-    // This is robust against Google Sheets exporting the merged banner row
-    // differently (or not at all)
     let headerRowIdx = -1;
     for (let i = 0; i < rows.length; i++) {
       if ((rows[i][0] || '').trim().toLowerCase() === 'field') {
@@ -85,7 +83,6 @@
         break;
       }
     }
-    // Fallback: if no "Field" row found, treat row 1 as header
     if (headerRowIdx === -1) headerRowIdx = 1;
 
     const numOffers = rows[headerRowIdx].length - 1;
@@ -99,36 +96,11 @@
         offers[oi][fieldName] = (rows[ri][oi + 1] || '').trim();
       }
     }
-    // Drop phantom offer columns — Google Sheets exports trailing empty
-    // columns as part of the CSV (default 26-col width), and they'd
-    // otherwise render as broken empty cards because isVisible only
-    // suppresses on explicit "hide", not on emptiness.
     return offers.filter(o => Object.values(o).some(v => v));
   }
 
   function isVisible(o) {
     return (o['Visibility'] || '').trim().toLowerCase() !== 'hide';
-  }
-
-  // Section headers (Eyebrow / Title / Subtitle) live in their own field rows
-  // in each section sheet. Reads the first non-empty value across columns,
-  // translates for Spanish, and renders a section-header HTML block.
-  async function buildSectionHeader(offers) {
-    let eyebrow  = (offers.find(o => o['Section Eyebrow'])  || {})['Section Eyebrow']  || '';
-    let title    = (offers.find(o => o['Section Title'])    || {})['Section Title']    || '';
-    let subtitle = (offers.find(o => o['Section Subtitle']) || {})['Section Subtitle'] || '';
-    if (IS_ES) {
-      const parts = [eyebrow, title, subtitle];
-      const xl = await translateBatch(parts);
-      eyebrow = xl[0]; title = xl[1]; subtitle = xl[2];
-    }
-    if (!eyebrow && !title && !subtitle) return '';
-    return `
-      <div class="section-header">
-        ${eyebrow  ? `<p class="section-eyebrow">${esc(eyebrow)}</p>`            : ''}
-        ${title    ? `<h2 class="section-title acs-bold">${esc(title)}</h2>`     : ''}
-        ${subtitle ? `<p class="section-sub">${esc(subtitle)}</p>`               : ''}
-      </div>`;
   }
 
   // ── Translation ────────────────────────────────────────────────────
@@ -172,459 +144,257 @@
     }
   }
 
-  // ── UI strings ─────────────────────────────────────────────────────
-  const UI_EN = {
-    shopNow:             'Shop Now',
-    claimOffer:          'Claim Offer',
-    or:                  'or',
-    maintBadge:          '✓ Includes Complimentary Maintenance',
-    disclaimerToggle:    'Disclaimer',
-    offerBarAPRLbl:      'APR Financing',
-    offerBarAPRSub:      'for 60 months',
-    offerBarDownLbl:     'Down Payment',
-    offerBarDownSub:     'well-qualified buyers',
-    offerBarPmtsLbl:     'Payments',
-    offerBarPmtsSub:     'first 3 months',
-    offerBarHelpLbl:     'We Can Help',
-    offerBarHelpSub:     'Bad or no credit',
-    incBarTitle:         'Every Lease Includes:',
-    incBarSub:           'All items at no added cost.',
-    navLabel:               'Specials',
-    navTripleZero:          'Triple Zero Sale',
-    navGettelsGotIt:        "Gettel's Got It!",
-    navZeroDownLeases:      '$0 Down Leases',
-    navSpecialPrograms:     'Special Programs',
-  };
-
-  // incTags translated separately to avoid delimiter mangling in the main UI batch
-  const INC_TAGS_EN = [
-    '✓ Complimentary Maintenance — Full Lease',
-    '✓ 12,000 Miles / Year',
-    '✓ $0 Security Deposit',
-    '✓ Dealer Documentation Fee',
-    '✓ E-Registration Filing Fee',
-    '✓ Lease Acquisition Fee',
-    '✓ Full Tank of Gas',
-  ];
-  let incTagsTranslated = INC_TAGS_EN;
-
-  let UI = { ...UI_EN };
-
-  function translateSidebar() {
-    if (!IS_ES) return;
-    const label = document.querySelector('.sidebar-nav-label');
-    if (label) label.textContent = t('navLabel');
-    const map = {
-      'triple-zero':      'navTripleZero',
-      'gettels-got-it':   'navGettelsGotIt',
-      'zero-down-leases': 'navZeroDownLeases',
-      'programs':         'navSpecialPrograms',
-    };
-    document.querySelectorAll('.sidebar-nav a').forEach(l => {
-      const id  = l.getAttribute('href').replace('#', '');
-      const key = map[id];
-      if (!key) return;
-      // Preserve the .nav-num span, only replace the trailing text node
-      const num  = l.querySelector('.nav-num');
-      const text = l.querySelector('.nav-text');
-      if (text) {
-        text.textContent = t(key);
-      } else {
-        // Find and replace just the trailing text node
-        l.childNodes.forEach(n => {
-          if (n.nodeType === 3 && n.textContent.trim()) n.textContent = t(key);
-        });
-      }
-    });
+  // ── Small DOM helpers ──────────────────────────────────────────────
+  // Set text on a child by class. Hide the element if value is empty so
+  // empty offer slots collapse cleanly (VV cards always ship all 4 slots).
+  function setText(scope, cls, val) {
+    const el = scope.querySelector('.' + cls);
+    if (!el) return;
+    if (val) { el.textContent = val; }
+    else { el.textContent = ''; el.style.display = 'none'; }
   }
 
-  async function translateUI() {
-    if (!IS_ES) return;
-    // Translate incTags as a clean separate batch
-    incTagsTranslated = await translateBatch([...INC_TAGS_EN]);
-    const keys   = Object.keys(UI_EN);
-    const flat   = keys.map(k => Array.isArray(UI_EN[k]) ? UI_EN[k].join(' ||| ') : UI_EN[k]);
-    const xlated = await translateBatch(flat);
-    const result = {};
-    keys.forEach((k, i) => {
-      result[k] = Array.isArray(UI_EN[k])
-        ? xlated[i].split(/\s*\|\|\|\s*/).map(s => s.trim())
-        : xlated[i];
-    });
-    UI = result;
+  function setAttr(scope, cls, attr, val) {
+    const el = scope.querySelector('.' + cls);
+    if (el && val) el.setAttribute(attr, val);
   }
 
-  function t(key) { return UI[key] !== undefined ? UI[key] : UI_EN[key]; }
-
-  function esc(s) {
-    return String(s || '')
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  // Reveal a card inline (DDC platform CSS fights class-based hiding, so the
+  // page hides via [data-ready="0"] and we flip the attribute + inline style)
+  function markReady(card) {
+    card.setAttribute('data-ready', '1');
+    card.style.display = '';
   }
 
-  // ── Section builders ───────────────────────────────────────────────
-
-  async function buildTripleZero(offers, bannerOffers, el) {
-    let sectionDisclaimer = (offers.find(o => o['Section Disclaimer']) || {})['Section Disclaimer'] || '';
+  // ── Section: New Toyota Specials (vehicle cards, 4 offers each) ─────
+  async function buildVehicleCards(offers) {
+    const tpl = document.querySelector('.car-offer[data-model]');
+    if (!tpl) return;
+    const parent = tpl.parentNode;
     const active = offers.filter(o => isVisible(o) && o['Year'] && o['Model']);
-    if (!active.length) { el.style.display = 'none'; return; }
-    if (IS_ES && sectionDisclaimer) [sectionDisclaimer] = await translateBatch([sectionDisclaimer]);
-    const sectionHeaderHtml = await buildSectionHeader(offers);
-    let models = active.map(v => v['Model']);
 
-    // ── Offer bar (banner tab) ────────────────────────────────────────
-    let barItems = bannerOffers.filter(isVisible);
-    if (IS_ES && barItems.length) {
-      const labels = barItems.map(o => o['Label']);
-      const subs   = barItems.map(o => o['Subtext']);
-      const [xlLabels, xlSubs] = await Promise.all([translateBatch(labels), translateBatch(subs)]);
-      barItems = barItems.map((o, i) => ({ ...o, Label: xlLabels[i], Subtext: xlSubs[i] }));
+    if (!active.length) {
+      // Nothing to show — remove the template card and bail
+      tpl.remove();
+      return;
     }
-    const offerBarHtml = barItems.length
-      ? barItems.map(item => {
-          const sep = (item['Separator Before'] || '').trim();
-          return `${sep ? `<div class="offer-or">${esc(sep)}</div>` : ''}
-            <div class="offer-pill">
-              <div class="big-num">${esc(item['Big Value'])}</div>
-              <div class="pill-label">${esc(item['Label'])}</div>
-              <div class="pill-sub">${esc(item['Subtext'])}</div>
-            </div>`;
-        }).join('')
-      : `<div class="offer-pill">
-           <div class="big-num">0%</div>
-           <div class="pill-label">${esc(t('offerBarAPRLbl'))}</div>
-           <div class="pill-sub">${esc(t('offerBarAPRSub'))}</div>
-         </div>
-         <div class="offer-or">+</div>
-         <div class="offer-pill">
-           <div class="big-num">$0</div>
-           <div class="pill-label">${esc(t('offerBarDownLbl'))}</div>
-           <div class="pill-sub">${esc(t('offerBarDownSub'))}</div>
-         </div>
-         <div class="offer-or">+</div>
-         <div class="offer-pill">
-           <div class="big-num">0</div>
-           <div class="pill-label">${esc(t('offerBarPmtsLbl'))}</div>
-           <div class="pill-sub">${esc(t('offerBarPmtsSub'))}</div>
-         </div>
-         <div class="offer-or">+</div>
-         <div class="offer-pill">
-           <div class="big-num">✓</div>
-           <div class="pill-label">${esc(t('offerBarHelpLbl'))}</div>
-           <div class="pill-sub">${esc(t('offerBarHelpSub'))}</div>
-         </div>`;
 
-    let aprTerms   = active.map(v => v['APR Term']      || '');
-    let badge2Lbls = active.map(v => v['Badge 2 Label'] || '$0 DOWN');
-    let badge2Subs = active.map(v => v['Badge 2 Sub']   || '');
-    let pmtsBars   = active.map(v => v['Payments Bar']  || '');
+    // Spanish: translate all dynamic strings for all cards in one batch
+    let xl = {};
     if (IS_ES) {
-      [aprTerms, badge2Lbls, badge2Subs, pmtsBars] = await Promise.all([
-        translateBatch(aprTerms),
-        translateBatch(badge2Lbls),
-        translateBatch(badge2Subs),
-        translateBatch(pmtsBars),
-      ]);
+      const flat = [];
+      const push = (o) => {
+        flat.push(o['Trim'] || '', o['MSRP'] || '', o['Maintenance'] || '');
+        for (let n = 1; n <= 4; n++) {
+          flat.push(o[`Offer ${n} Type`] || '', o[`Offer ${n} Headline`] || '',
+                    o[`Offer ${n} Terms`] || '', o[`Offer ${n} Disclaimer`] || '');
+        }
+      };
+      active.forEach(push);
+      const out = await translateBatch(flat);
+      let k = 0;
+      xl = active.map(() => {
+        const rec = { Trim: out[k++], MSRP: out[k++], Maintenance: out[k++], offers: [] };
+        for (let n = 1; n <= 4; n++) {
+          rec.offers.push({ Type: out[k++], Headline: out[k++], Terms: out[k++], Disclaimer: out[k++] });
+        }
+        return rec;
+      });
     }
 
-    const cards = active.map((v, i) => {
-      const flip     = (v['Flip Image'] || '').toLowerCase() === 'yes';
-      const aprRate  = v['APR Rate']        || '0%';
-      const aprTerm  = aprTerms[i];
-      const badge2Lbl = badge2Lbls[i];
-      const badge2Sub = badge2Subs[i];
-      const pmtsBar   = pmtsBars[i];
-      const claimUrl  = v['Claim Offer URL'] || '/new-car-specials-lead-form.htm';
-      return `
-        <div class="v-card">
-          <div class="v-card-img">
-            <img src="${esc(v['Image URL'])}" alt=""${flip ? ' style="transform:scaleX(-1)"' : ''}>
-          </div>
-          <div class="v-card-body">
-            <div class="v-card-year">${esc(v['Year'])}</div>
-            <div class="v-card-model">${esc(models[i])}</div>
-            <div class="tz-offer-group">
-              <div class="tz-badges">
-                <div class="tz-badge"><div class="tz-val">${esc(aprRate)}</div>${aprTerm  ? `<div class="tz-term">${esc(aprTerm)}</div>`  : ''}</div>
-                <div class="tz-badge"><div class="tz-val">${esc(badge2Lbl)}</div>${badge2Sub ? `<div class="tz-term">${esc(badge2Sub)}</div>` : ''}</div>
-                ${pmtsBar ? `<div class="tz-badge"><div class="tz-val">${esc(pmtsBar)}</div></div>` : ''}
-              </div>
-            </div>
-            <div class="v-card-cta">
-              <a href="${esc(v['Shop URL'])}" class="btn btn-primary">${esc(t('shopNow'))}</a>
-              <a href="${esc(claimUrl)}" class="btn btn-outline">${esc(t('claimOffer'))}</a>
-            </div>
-          </div>
-        </div>`;
-    }).join('');
-    el.innerHTML = `
-      <div id="triple-zero" class="section section-gray acs-oem-brand">
-        <span class="scroll-target"></span>
-        <div class="section-inner">
-        ${sectionHeaderHtml}
-        <div class="offer-bar">
-          ${offerBarHtml}
-        </div>
-        <div class="card-grid">${cards}</div>
-        ${sectionDisclaimer ? `
-        <details class="disclaimer" style="margin-top:16px;">
-          <summary>${esc(t('disclaimerToggle'))}</summary>
-          <p>${esc(sectionDisclaimer)}</p>
-        </details>` : ''}
-      </div>`;
+    const anchorParts = [];
+
+    active.forEach((v, vi) => {
+      const card = tpl.cloneNode(true);
+      const tr   = IS_ES ? xl[vi] : null;
+
+      // ID / anchor (slugified model)
+      const slug = (v['Anchor'] || v['Model'] || ('gst-offer-' + (vi + 1)))
+        .toString().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      card.id = slug;
+      card.setAttribute('data-model', 'GST-Offer' + (vi + 1));
+
+      // Title block
+      setText(card, 'model-title', v['Model']);
+      setText(card, 'trim-level',  tr ? tr.Trim : v['Trim']);
+      setText(card, 'msrp',        tr ? tr.MSRP : v['MSRP']);
+      setText(card, 'maintenance', tr ? tr.Maintenance : v['Maintenance']);
+
+      // If no maintenance value, hide the accent bar entirely
+      const maintEl = card.querySelector('.maintenance');
+      if (maintEl && !(tr ? tr.Maintenance : v['Maintenance'])) {
+        const bar = maintEl.closest('.acs-bg-accent');
+        if (bar) bar.style.display = 'none';
+      }
+
+      // Image
+      const img = card.querySelector('.offer-image');
+      if (img) {
+        if (v['Image URL']) img.src = v['Image URL'];
+        img.alt = (v['Year'] ? v['Year'] + ' ' : '') + (v['Model'] || '');
+        if ((v['Flip Image'] || '').toLowerCase() === 'yes') img.style.transform = 'scaleX(-1)';
+      }
+
+      // Year prefix on model title (VV shows trim; GST shows Year as eyebrow-ish)
+      // Keep Year inside trim-level if no Trim provided
+      if (!v['Trim'] && v['Year']) setText(card, 'trim-level', v['Year']);
+
+      // Four offer slots
+      let anyOfferShown = false;
+      for (let n = 1; n <= 4; n++) {
+        const cardEl = card.querySelector('.offer-' + n + '-card');
+        const type     = tr ? tr.offers[n - 1].Type     : (v[`Offer ${n} Type`]     || '');
+        const headline = tr ? tr.offers[n - 1].Headline : (v[`Offer ${n} Headline`] || '');
+        const terms    = tr ? tr.offers[n - 1].Terms    : (v[`Offer ${n} Terms`]    || '');
+        const disc     = tr ? tr.offers[n - 1].Disclaimer : (v[`Offer ${n} Disclaimer`] || '');
+        const hidden   = (v[`Offer ${n} Card`] || '').toLowerCase() === 'hide';
+
+        if (hidden || (!type && !headline && !terms)) {
+          if (cardEl) cardEl.style.display = 'none';
+        } else {
+          anyOfferShown = true;
+          setText(card, 'offer-' + n + '-type', type);
+          setText(card, 'offer-' + n + '-headline', headline);
+          setText(card, 'offer-' + n + '-terms', terms);
+        }
+        // Disclaimer paragraph (inside the rolled-up details)
+        setText(card, 'offer-' + n + '-disclaimer', disc ? (type ? type + ': ' + disc : disc) : '');
+      }
+
+      // Buttons
+      setAttr(card, 'shopping-link', 'href', v['Shop URL'] || '#');
+      const shopLink = card.querySelector('.shopping-link-text');
+      if (shopLink) shopLink.textContent = v['Shop Button Label'] || 'Shop Inventory';
+      const claimLink = card.querySelector('.acs-button:not(.acs-button2)');
+      if (claimLink && v['Claim Offer URL']) claimLink.href = v['Claim Offer URL'];
+
+      // Anchor nav entry
+      anchorParts.push(`<a href="#${slug}" class="acs-accent"> ${v['Model']}</a>`);
+
+      markReady(card);
+      parent.insertBefore(card, tpl);
+    });
+
+    // Remove the original (still-empty) template card
+    tpl.remove();
+
+    // Populate anchor link strips (top + bottom)
+    const navHtml = anchorParts.join(' | ');
+    document.querySelectorAll('[data-nav="links"]').forEach(span => { span.innerHTML = navHtml; });
   }
 
-  async function buildGettelsGotIt(offers, el) {
+  // ── Section: Triple Zero Event Slide (image from sheet) ────────────
+  // Reads the slide tab as a simple key->value map straight down columns
+  // A/B. This deliberately bypasses csvToOffers' header-row detection: a
+  // single-column settings tab has no "Field" header, and the offer-column
+  // logic would otherwise consume the first data row as a header and drop it.
+  function buildTripleZeroSlide(csvText) {
+    const pic = document.getElementById('tz-slide');
+    if (!pic) return;
+
+    const rows = parseCsv(csvText || '');
+    const kv = {};
+    rows.forEach(r => {
+      const key = (r[0] || '').trim();
+      const val = (r[1] || '').trim();
+      if (key) kv[key] = val;
+    });
+
+    if ((kv['Visibility'] || '').trim().toLowerCase() === 'hide') {
+      pic.parentNode.style.display = 'none';
+      return;
+    }
+
+    const desktop = kv['Image URL (desktop)'] || kv['Desktop'] || kv['Image URL'] || '';
+    const mobile  = kv['Image URL (mobile)']  || kv['Mobile']  || desktop;
+    const alt     = kv['Image Alt'] || 'Gettel Stadium Toyota Triple Zero Event';
+    const link    = kv['CTA URL'] || kv['Image CTA URL'] || '';
+
+    if (!desktop) { pic.parentNode.style.display = 'none'; return; }
+
+    const dSrc = pic.querySelector('.tz-slide-desktop');
+    const mSrc = pic.querySelector('.tz-slide-mobile');
+    const img  = pic.querySelector('.tz-slide-img');
+    if (dSrc) dSrc.srcset = desktop;
+    if (mSrc) mSrc.srcset = mobile;
+    if (img) { img.src = desktop; img.alt = alt; }
+
+    if (link && img) {
+      const a = document.createElement('a');
+      a.href = link;
+      pic.parentNode.insertBefore(a, pic);
+      a.appendChild(pic);
+    }
+  }
+
+  // ── Section: Gettel's Got It! (full 3-col width) ───────────────────
+  async function buildGettelsGotIt(offers) {
+    const tpl = document.querySelector('.gg-offer[data-gg]');
+    if (!tpl) return;
+    const parent = tpl.parentNode;
     const active = offers.filter(o => isVisible(o) && o['Title']);
-    if (!active.length) { el.style.display = 'none'; return; }
-    const sectionHeaderHtml = await buildSectionHeader(offers);
+
+    // Section header (eyebrow/title/subtitle live in field rows)
+    let secTitle = (offers.find(o => o['Section Title']) || {})['Section Title'] || '';
+    let secSub   = (offers.find(o => o['Section Subtitle']) || {})['Section Subtitle'] || '';
+
+    if (!active.length) { tpl.remove(); document.getElementById('gettels-got-it').style.display = 'none'; return; }
+
     let titles = active.map(v => v['Title']);
     let descs  = active.map(v => v['Description']);
     let ctas   = active.map(v => v['CTA Label']);
     let discls = active.map(v => v['Disclaimer']);
     if (IS_ES) {
-      [titles, descs, ctas, discls] = await Promise.all([
+      [titles, descs, ctas, discls, [secTitle, secSub]] = await Promise.all([
         translateBatch(titles), translateBatch(descs),
         translateBatch(ctas),   translateBatch(discls),
+        translateBatch([secTitle, secSub]),
       ]);
     }
-    const cards = active.map((v, i) => `
-      <div class="promo-card">
-        <a href="${esc(v['CTA URL'])}">
-          <img src="${esc(v['Image URL'])}" alt="${esc(v['Image Alt'])}">
-        </a>
-        <div class="promo-card-body">
-          <div class="promo-title">${esc(titles[i])}</div>
-          <p class="promo-desc">${esc(descs[i])}</p>
-          <a href="${esc(v['CTA URL'])}" class="btn btn-primary">${esc(ctas[i])}</a>
-          ${discls[i] ? `<details class="disclaimer" style="margin-top:10px;">
-            <summary>${esc(t('disclaimerToggle'))}</summary>
-            <p>${esc(discls[i])}</p>
-          </details>` : ''}
-        </div>
-      </div>`).join('');
-    el.innerHTML = `
-      <div id="gettels-got-it" class="section section-gray acs-oem-brand">
-        <span class="scroll-target"></span>
-        <div class="section-inner">
-        ${sectionHeaderHtml}
-        <div class="promo-grid">${cards}</div>
-        </div>
-      </div>`;
-  }
 
-  async function buildLeases(offers, el) {
-    // Defensive: must be visible AND have identifying data. Catches phantom
-    // columns and stale rows where Visibility wasn't explicitly set to "hide"
-    // but the row is essentially empty / leftover noise.
-    const active = offers.filter(o => isVisible(o) && o['Year'] && o['Model']);
-    if (!active.length) { el.style.display = 'none'; return; }
-    const sectionHeaderHtml = await buildSectionHeader(offers);
+    if (secTitle) { const e = document.querySelector('.gg-section-title'); if (e) e.textContent = secTitle; }
+    if (secSub)   { const e = document.querySelector('.gg-section-sub');   if (e) e.textContent = secSub; }
+    else          { const e = document.querySelector('.gg-section-sub');   if (e) e.style.display = 'none'; }
 
-    // ── Build per-vehicle offer blocks (1-4 offers each) ───────────────────
-    // For each visible vehicle, gather its visible offer slots into an array.
-    const FIELDS = ['Type', 'Headline', 'Terms', 'Disclaimer'];
-    const isOfferShown = card => (card || '').toLowerCase() !== 'hide';
-    const perVehicle = active.map(v => {
-      const blocks = [];
-      for (let n = 1; n <= 4; n++) {
-        if (!isOfferShown(v[`Offer ${n} Card`])) continue;
-        const data = {};
-        FIELDS.forEach(f => { data[f] = v[`Offer ${n} ${f}`] || ''; });
-        // Skip slot if every visible field is empty (avoid blank offer block)
-        if (!data.Type && !data.Headline && !data.Terms && !data.Disclaimer) continue;
-        data.n      = n;
-        data.orBar  = (v[`OR Bar ${n}`] || '').trim();   // bar that follows this offer
-        blocks.push(data);
+    active.forEach((v, i) => {
+      const card = tpl.cloneNode(true);
+      card.setAttribute('data-gg', String(i + 1));
+
+      const link = card.querySelector('.gg-link');
+      if (link && v['CTA URL']) link.href = v['CTA URL'];
+      const img = card.querySelector('.gg-image');
+      if (img) { if (v['Image URL']) img.src = v['Image URL']; img.alt = v['Image Alt'] || titles[i] || ''; }
+
+      setText(card, 'gg-title', titles[i]);
+      setText(card, 'gg-desc',  descs[i]);
+
+      const cta = card.querySelector('.gg-cta');
+      if (cta) { cta.textContent = ctas[i] || 'Learn More'; if (v['CTA URL']) cta.href = v['CTA URL']; }
+
+      if (discls[i]) {
+        setText(card, 'gg-disc', discls[i]);
+        const wrap = card.querySelector('.gg-disc-wrap');
+        if (wrap) wrap.style.display = '';
       }
-      return blocks;
+
+      markReady(card);
+      parent.insertBefore(card, tpl);
     });
 
-    // ── Spanish: translate every dynamic string in one batch for efficiency ─
-    if (IS_ES) {
-      const flat = [];
-      perVehicle.forEach(blocks => blocks.forEach(b => {
-        flat.push(b.Type, b.Headline, b.Terms, b.Disclaimer, b.orBar);
-      }));
-      if (flat.length) {
-        const xl = await translateBatch(flat);
-        let k = 0;
-        perVehicle.forEach(blocks => blocks.forEach(b => {
-          b.Type      = xl[k++];
-          b.Headline  = xl[k++];
-          b.Terms     = xl[k++];
-          b.Disclaimer= xl[k++];
-          b.orBar     = xl[k++];
-        }));
-      }
-    }
-
-    const incTags = incTagsTranslated.map(tag => '<span class="inc-tag">' + esc(tag) + '</span>').join('');
-
-    const cards = active.map((v, vi) => {
-      const maint = (v['Maint. Badge'] || '').toLowerCase() === 'yes';
-      const flip  = (v['Flip Image'] || '').toLowerCase() === 'yes';
-      const blocks = perVehicle[vi];
-
-      const offersHtml = blocks.map((b, idx) => {
-        let html = '';
-        if (b.Type)     html += `<div class="lease-label">${esc(b.Type)}</div>`;
-        if (b.Headline) html += `<div class="lease-price">${esc(b.Headline)}</div>`;
-        if (b.Terms)    html += `<div class="lease-due">${esc(b.Terms)}</div>`;
-        // OR bar after this offer (except after the last visible one) — only render if bar text present
-        if (idx < blocks.length - 1 && b.orBar) {
-          html += `<div class="lease-divider">${esc(b.orBar)}</div>`;
-        }
-        return html;
-      }).join('');
-
-      // Roll up every offer's disclaimer for this vehicle into one toggle.
-      // When expanded, each entry is prefixed with its offer Type so multiples stay distinguishable.
-      const discEntries = blocks
-        .filter(b => b.Disclaimer)
-        .map(b => b.Type
-          ? `<p><strong>${esc(b.Type)}:</strong> ${esc(b.Disclaimer)}</p>`
-          : `<p>${esc(b.Disclaimer)}</p>`)
-        .join('');
-      const disclaimerBlock = discEntries
-        ? `<details class="disclaimer"><summary>${esc(t('disclaimerToggle'))}</summary>${discEntries}</details>`
-        : '';
-
-      return `
-        <div class="lease-card-wrap">
-          <div class="v-card">
-            <div class="v-card-img"><img src="${esc(v['Image URL'])}" alt=""${flip ? ' style="transform:scaleX(-1)"' : ''}></div>
-            <div class="v-card-body">
-              <div class="v-card-year">${esc(v['Year'])}</div>
-              <div class="v-card-model">${esc(v['Model'])}</div>
-              ${maint ? `<div class="maint-badge">${esc(t('maintBadge'))}</div>` : ''}
-              ${offersHtml ? `<div class="lease-offer">${offersHtml}</div>` : ''}
-              <div class="v-card-cta">
-                <a href="${esc(v['Shop URL'])}" class="btn btn-primary">${esc(t('shopNow'))}</a>
-                <a href="/new-car-specials-lead-form.htm" class="btn btn-outline">${esc(t('claimOffer'))}</a>
-              </div>
-            </div>
-          </div>
-          ${disclaimerBlock ? `<div class="v-card-disc">${disclaimerBlock}</div>` : ''}
-        </div>`;
-    }).join('');
-
-    el.innerHTML = `
-      <div id="zero-down-leases" class="section section-alt acs-oem-brand">
-        <span class="scroll-target"></span>
-        <div class="section-inner">
-        ${sectionHeaderHtml}
-        <div class="includes-bar">
-          <div class="includes-bar-label">
-            <p>${esc(t('incBarTitle'))}</p>
-            <p>${esc(t('incBarSub'))}</p>
-          </div>
-          <div class="includes-tags">${incTags}</div>
-        </div>
-        <div class="card-grid">${cards}</div>
-        </div>
-      </div>`;
+    tpl.remove();
   }
 
-  // Used Specials — renders each visible offer by Card Type
-  function buildUsedSpecials(offers, el) {
-    const active = offers.filter(o => isVisible(o) && o['Card Type']);
-    if (!active.length) { el.style.display = 'none'; return; }
-
-    // Separate by card type, preserving order
-    const heroOffers    = active.filter(o => o['Card Type'] === 'hero');
-    const aprOffers     = active.filter(o => o['Card Type'] === 'apr-card');
-    const programOffers = active.filter(o => o['Card Type'] === 'program-card');
-
-    const heroHtml = heroOffers.map(o => `
-      <div class="section section-alt acs-oem-brand">
-        <div class="hero-split">
-          <div class="hero-split-img">
-            <a href="${esc(o['Image CTA URL'] || '/used-inventory/index.htm')}">
-              <picture>
-                <source media="(min-width:768px)" srcset="${esc(o['Image URL (desktop)'])}">
-                <source media="(min-width:0px)"   srcset="${esc(o['Image URL (mobile)'] || o['Image URL (desktop)'])}">
-                <img src="${esc(o['Image URL (desktop)'])}" alt="${esc(o['Image Alt'])}">
-              </picture>
-            </a>
-          </div>
-          <div class="hero-split-body">
-            <p class="section-eyebrow">Gettel Exclusive Offer</p>
-            <div class="match-num">${esc(o['Headline / Big Number'])}</div>
-            <div class="match-label">${esc(o['Subheading'])}</div>
-            <p class="match-desc">${esc(o['Description'])}</p>
-            <a href="${esc(o['CTA 1 URL'])}" class="btn btn-primary">${esc(o['CTA 1 Label'])}</a>
-          </div>
-        </div>
-        ${o['Disclaimer'] ? `<details class="disclaimer">
-          <summary>${esc(t('disclaimerToggle'))}</summary>
-          <p>${esc(o['Disclaimer'])}</p>
-        </details>` : ''}
-      </div>
-      <hr class="section-divider">`).join('');
-
-    const aprHtml = aprOffers.length ? `
-      <div class="section section-gray acs-oem-brand">
-        <div class="section-header centered">
-          <p class="section-eyebrow">Everything You Need</p>
-          <h2 class="section-title acs-bold">Finance, Certify &amp; Drive</h2>
-          <p class="section-sub">Low rates, flexible programs, and every vehicle backed by our peace-of-mind guarantee.</p>
-        </div>
-        <div class="card-grid-2">
-          ${aprOffers.map(o => `
-          <div class="offer-card offer-card-horiz">
-            <div class="offer-card-accent"></div>
-            <div class="offer-card-badge" style="background:#fafafa;">
-              <div style="text-align:center;">
-                <div class="apr-badge">${esc(o['Headline / Big Number'])}</div>
-                <div class="apr-badge-label">${esc(o['Subheading'])}</div>
-              </div>
-            </div>
-            <div class="offer-card-body">
-              <div class="offer-card-title">${esc(o['Description'])}</div>
-              <div class="offer-card-body-text">
-                ${[o['List Item 1'], o['List Item 2'], o['List Item 3']].filter(Boolean).length
-                  ? `<ul>${[o['List Item 1'], o['List Item 2'], o['List Item 3']].filter(Boolean).map(li => `<li>${esc(li)}</li>`).join('')}</ul>`
-                  : ''}
-              </div>
-              ${o['CTA 1 Label'] ? `<a href="${esc(o['CTA 1 URL'])}" class="btn btn-primary">${esc(o['CTA 1 Label'])}</a>` : ''}
-              ${o['CTA 2 Label'] ? `<a href="${esc(o['CTA 2 URL'])}" class="btn btn-outline">${esc(o['CTA 2 Label'])}</a>` : ''}
-              ${o['Disclaimer'] ? `<details class="disclaimer"><summary>${esc(t('disclaimerToggle'))}</summary><p>${esc(o['Disclaimer'])}</p></details>` : ''}
-            </div>
-          </div>`).join('')}
-        </div>
-      </div>` : '';
-
-    const programHtml = programOffers.length ? `
-      <div class="section section-gray acs-oem-brand" style="padding-top:0;">
-        <div class="card-grid-2">
-          ${programOffers.map(o => `
-          <div class="offer-card">
-            <div class="offer-card-accent green"></div>
-            <div class="offer-card-badge">
-              <img src="${esc(o['Image URL (desktop)'])}" alt="${esc(o['Image Alt'])}">
-            </div>
-            <div class="offer-card-body">
-              <div class="offer-card-eyebrow green">${esc(o['Subheading'])}</div>
-              <div class="offer-card-title">${esc(o['Headline / Big Number'])}</div>
-              ${[o['List Item 1'], o['List Item 2'], o['List Item 3']].filter(Boolean).length
-                ? `<div class="offer-card-body-text"><ul>${[o['List Item 1'], o['List Item 2'], o['List Item 3']].filter(Boolean).map(li => `<li>${esc(li)}</li>`).join('')}</ul></div>`
-                : ''}
-              ${o['CTA 1 Label'] ? `<a href="${esc(o['CTA 1 URL'])}" class="btn btn-primary">${esc(o['CTA 1 Label'])}</a>` : ''}
-              ${o['Disclaimer'] ? `<details class="disclaimer"><summary>${esc(t('disclaimerToggle'))}</summary><p>${esc(o['Disclaimer'])}</p></details>` : ''}
-            </div>
-          </div>`).join('')}
-        </div>
-      </div>` : '';
-
-    el.innerHTML = heroHtml + aprHtml + programHtml;
-  }
-
-
-  async function buildSpecialPrograms(offers, el) {
+  // ── Section: Special Programs (full 3-col width) ───────────────────
+  async function buildSpecialPrograms(offers) {
+    const tpl = document.querySelector('.sp-offer[data-sp]');
+    if (!tpl) return;
+    const parent = tpl.parentNode;
     const active = offers.filter(o => isVisible(o) && o['Title']);
-    if (!active.length) { el.style.display = 'none'; return; }
-    const sectionHeaderHtml = await buildSectionHeader(offers);
+
+    let secTitle = (offers.find(o => o['Section Title']) || {})['Section Title'] || '';
+    let secSub   = (offers.find(o => o['Section Subtitle']) || {})['Section Subtitle'] || '';
+
+    if (!active.length) { tpl.remove(); document.getElementById('special-programs').style.display = 'none'; return; }
 
     let eyebrows = active.map(o => o['Eyebrow']);
     let titles   = active.map(o => o['Title']);
@@ -636,196 +406,90 @@
     let discls   = active.map(o => o['Disclaimer']);
 
     if (IS_ES) {
-      [eyebrows, titles, bodies, li1s, li2s, li3s, ctas, discls] = await Promise.all([
-        translateBatch(eyebrows),
-        translateBatch(titles),
-        translateBatch(bodies),
-        translateBatch(li1s),
-        translateBatch(li2s),
-        translateBatch(li3s),
-        translateBatch(ctas),
-        translateBatch(discls),
+      [eyebrows, titles, bodies, li1s, li2s, li3s, ctas, discls, [secTitle, secSub]] = await Promise.all([
+        translateBatch(eyebrows), translateBatch(titles), translateBatch(bodies),
+        translateBatch(li1s), translateBatch(li2s), translateBatch(li3s),
+        translateBatch(ctas), translateBatch(discls), translateBatch([secTitle, secSub]),
       ]);
     }
 
-    const cards = active.map((o, i) => {
-      const listItems = [li1s[i], li2s[i], li3s[i]].filter(Boolean);
-      const isPrimary = (o['CTA Style'] || 'primary').toLowerCase() !== 'outline';
-      return `
-        <div class="promo-card">
-          ${o['Image URL'] ? `<img src="${esc(o['Image URL'])}" alt="${esc(o['Image Alt'])}">` : ''}
-          <div class="promo-card-body">
-            <div class="section-eyebrow">${esc(eyebrows[i])}</div>
-            <div class="promo-title">${esc(titles[i])}</div>
-            <div class="promo-desc">
-              ${bodies[i] ? esc(bodies[i]) : ''}
-              ${listItems.length ? `<ul style="margin-top:6px;">${listItems.map(li => `<li>${esc(li)}</li>`).join('')}</ul>` : ''}
-            </div>
-            <a href="${esc(o['CTA URL'])}" class="btn ${isPrimary ? 'btn-primary' : 'btn-outline'}">${esc(ctas[i])}</a>
-            ${discls[i] ? `<details class="disclaimer" style="margin-top:10px;">
-              <summary>${esc(t('disclaimerToggle'))}</summary>
-              <p>${esc(discls[i])}</p>
-            </details>` : ''}
-          </div>
-        </div>`;
-    }).join('');
+    if (secTitle) { const e = document.querySelector('.sp-section-title'); if (e) e.textContent = secTitle; }
+    if (secSub)   { const e = document.querySelector('.sp-section-sub');   if (e) e.textContent = secSub; }
+    else          { const e = document.querySelector('.sp-section-sub');   if (e) e.style.display = 'none'; }
 
-    el.innerHTML = `
-      <div id="programs" class="section section-alt acs-oem-brand">
-        <span class="scroll-target"></span>
-        <div class="section-inner">
-        ${sectionHeaderHtml}
-        <div class="promo-grid">${cards}</div>
-        </div>
-      </div>`;
+    active.forEach((o, i) => {
+      const card = tpl.cloneNode(true);
+      card.setAttribute('data-sp', String(i + 1));
+
+      const img = card.querySelector('.sp-image');
+      if (img) {
+        if (o['Image URL']) img.src = o['Image URL'];
+        else img.style.display = 'none';
+        img.alt = o['Image Alt'] || titles[i] || '';
+      }
+
+      setText(card, 'sp-eyebrow', eyebrows[i]);
+      setText(card, 'sp-title',   titles[i]);
+      setText(card, 'sp-body',    bodies[i]);
+
+      const listItems = [li1s[i], li2s[i], li3s[i]].filter(Boolean);
+      const ul = card.querySelector('.sp-list');
+      if (ul) {
+        if (listItems.length) {
+          ul.innerHTML = listItems.map(li => `<li>${li.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</li>`).join('');
+        } else {
+          ul.style.display = 'none';
+        }
+      }
+
+      const cta = card.querySelector('.sp-cta');
+      if (cta) {
+        cta.textContent = ctas[i] || 'Learn More';
+        if (o['CTA URL']) cta.href = o['CTA URL'];
+        if ((o['CTA Style'] || 'primary').toLowerCase() === 'outline') {
+          cta.classList.remove('acs-button'); cta.classList.add('acs-button2');
+        }
+      }
+
+      if (discls[i]) {
+        setText(card, 'sp-disc', discls[i]);
+        const wrap = card.querySelector('.sp-disc-wrap');
+        if (wrap) wrap.style.display = '';
+      }
+
+      markReady(card);
+      parent.insertBefore(card, tpl);
+    });
+
+    tpl.remove();
   }
 
   // ── Main ───────────────────────────────────────────────────────────
   async function init() {
-    const root = document.getElementById(ROOT_ID);
-    if (!root) return;
-    const IS_USED = (root.getAttribute('data-page') || 'new') === 'used';
-    const tzEl       = document.createElement('div');
-    const ggEl       = document.createElement('div');
-    const leaseEl    = document.createElement('div');
-    const programsEl = document.createElement('div');
-    const usedEl     = document.createElement('div');
-
-    if (IS_USED) {
-      root.appendChild(usedEl);
-      // Skeleton for used specials while data loads
-      usedEl.innerHTML = `
-      <div class="skeleton-section">
-        <div class="section-inner">
-          <div class="skel" style="width:100%;height:240px;border-radius:6px;margin-bottom:16px;"></div>
-        </div>
-      </div>
-      <div class="skeleton-section skeleton-alt">
-        <div class="section-inner">
-          <div class="skel-header">
-            <div class="skel skel-eyebrow"></div>
-            <div class="skel skel-title" style="margin-top:8px;"></div>
-          </div>
-          <div class="skel-promo-grid">
-            ${Array(2).fill(`
-            <div class="skel-promo-card">
-              <div class="skel-promo-img"><div class="skel"></div></div>
-              <div class="skel-promo-body">
-                <div class="skel" style="height:18px;width:80%;"></div>
-                <div class="skel" style="height:12px;"></div>
-                <div class="skel" style="height:12px;width:90%;"></div>
-                <div class="skel" style="height:34px;margin-top:12px;"></div>
-              </div>
-            </div>`).join('')}
-          </div>
-        </div>
-      </div>
-      <div class="skeleton-section skeleton-alt" style="padding-top:0;">
-        <div class="section-inner">
-          <div class="skel-promo-grid">
-            ${Array(2).fill(`
-            <div class="skel-promo-card">
-              <div class="skel-promo-img"><div class="skel"></div></div>
-              <div class="skel-promo-body">
-                <div class="skel" style="height:10px;width:40%;"></div>
-                <div class="skel" style="height:18px;width:70%;"></div>
-                <div class="skel" style="height:12px;"></div>
-                <div class="skel" style="height:12px;width:90%;"></div>
-                <div class="skel" style="height:34px;margin-top:12px;"></div>
-              </div>
-            </div>`).join('')}
-          </div>
-        </div>
-      </div>`;
-    } else {
-      root.append(leaseEl, tzEl, ggEl, programsEl);
-      // Show skeleton placeholders while data loads
-      tzEl.innerHTML = `
-      <div class="skeleton-section skeleton-alt">
-        <div class="section-inner">
-          <div class="skel-header">
-            <div class="skel skel-eyebrow"></div>
-            <div class="skel skel-title" style="margin-top:8px;"></div>
-            <div class="skel skel-sub" style="margin-top:8px;"></div>
-          </div>
-          <div class="skel skel-bar"></div>
-          <div class="skel-grid">
-            ${Array(7).fill('<div class="skel-card"><div class="skel-card-img"><div class="skel"></div></div><div class="skel-card-body"><div class="skel" style="height:12px;width:40%;"></div><div class="skel" style="height:18px;width:70%;"></div><div class="skel" style="height:48px;"></div><div class="skel" style="height:32px;margin-top:10px;"></div><div class="skel" style="height:32px;"></div></div></div>').join('')}
-          </div>
-        </div>
-      </div>`;
-      ggEl.innerHTML = `
-      <div class="skeleton-section skeleton-alt">
-        <div class="section-inner">
-          <div class="skel-header">
-            <div class="skel skel-eyebrow"></div>
-            <div class="skel skel-title" style="margin-top:8px;"></div>
-            <div class="skel skel-sub" style="margin-top:8px;"></div>
-          </div>
-          <div class="skel-promo-grid">
-            ${Array(3).fill('<div class="skel-promo-card"><div class="skel-promo-img"><div class="skel"></div></div><div class="skel-promo-body"><div class="skel" style="height:18px;width:80%;"></div><div class="skel" style="height:12px;"></div><div class="skel" style="height:12px;width:90%;"></div><div class="skel" style="height:34px;margin-top:12px;"></div></div></div>').join('')}
-          </div>
-        </div>
-      </div>`;
-      leaseEl.innerHTML = `
-      <div class="skeleton-section">
-        <div class="section-inner">
-          <div class="skel-header">
-            <div class="skel skel-eyebrow"></div>
-            <div class="skel skel-title" style="margin-top:8px;"></div>
-            <div class="skel skel-sub" style="margin-top:8px;"></div>
-          </div>
-          <div class="skel skel-bar"></div>
-          <div class="skel-grid">
-            ${Array(7).fill('<div class="skel-card"><div class="skel-card-img"><div class="skel"></div></div><div class="skel-card-body"><div class="skel" style="height:12px;width:40%;"></div><div class="skel" style="height:18px;width:70%;"></div><div class="skel" style="height:20px;width:90%;margin-bottom:4px;"></div><div class="skel" style="height:60px;"></div><div class="skel" style="height:32px;margin-top:10px;"></div><div class="skel" style="height:32px;"></div></div></div>').join('')}
-          </div>
-        </div>
-      </div>`;
-      programsEl.innerHTML = `
-      <div class="skeleton-section">
-        <div class="section-inner">
-          <div class="skel-header">
-            <div class="skel skel-eyebrow"></div>
-            <div class="skel skel-title" style="margin-top:8px;"></div>
-            <div class="skel skel-sub" style="margin-top:8px;"></div>
-          </div>
-          <div class="skel-promo-grid">
-            ${Array(2).fill('<div class="skel-promo-card"><div class="skel-promo-img"><div class="skel"></div></div><div class="skel-promo-body"><div class="skel" style="height:18px;width:80%;"></div><div class="skel" style="height:12px;"></div><div class="skel" style="height:12px;width:90%;"></div><div class="skel" style="height:34px;margin-top:12px;"></div></div></div>').join('')}
-          </div>
-        </div>
-      </div>`;
-    }
-
     try {
-      const [tzCsv, tzBannerCsv, ggCsv, leaseCsv, usedCsv, programsCsv] = await Promise.all([
-        IS_USED ? Promise.resolve('') : fetchTab(TABS.tz),
-        IS_USED ? Promise.resolve('') : fetchTab(TABS.tz_banner),
-        IS_USED ? Promise.resolve('') : fetchTab(TABS.gg),
-        IS_USED ? Promise.resolve('') : fetchTab(TABS.lease),
-        IS_USED ? fetchTab(TABS.used) : Promise.resolve(''),
-        IS_USED ? Promise.resolve('') : fetchTab(TABS.programs),
+      const [leaseCsv, slideCsv, ggCsv, programsCsv] = await Promise.all([
+        fetchTab(TABS.lease),
+        TABS.tz_slide && TABS.tz_slide !== 'REPLACE_ME'
+          ? fetchTab(TABS.tz_slide).catch(() => '')
+          : Promise.resolve(''),
+        fetchTab(TABS.gg),
+        fetchTab(TABS.programs),
       ]);
-
-      await translateUI();
-      translateSidebar();
 
       await Promise.all([
-        IS_USED ? Promise.resolve() : buildTripleZero(csvToOffers(tzCsv), csvToOffers(tzBannerCsv), tzEl),
-        IS_USED ? Promise.resolve() : buildGettelsGotIt(csvToOffers(ggCsv),       ggEl),
-        IS_USED ? Promise.resolve() : buildLeases(csvToOffers(leaseCsv),          leaseEl),
-        IS_USED ? Promise.resolve() : buildSpecialPrograms(csvToOffers(programsCsv), programsEl),
-        IS_USED ? Promise.resolve(buildUsedSpecials(csvToOffers(usedCsv), usedEl)) : Promise.resolve(),
+        buildVehicleCards(csvToOffers(leaseCsv)),
+        Promise.resolve(buildTripleZeroSlide(slideCsv)),
+        buildGettelsGotIt(csvToOffers(ggCsv)),
+        buildSpecialPrograms(csvToOffers(programsCsv)),
       ]);
 
-      // All sections rendered — signal scroll spy to recalculate
       requestAnimationFrame(() => requestAnimationFrame(() => {
         document.dispatchEvent(new CustomEvent('gst:ready'));
         if (IS_ES) document.dispatchEvent(new CustomEvent('gst:translated'));
       }));
 
     } catch (err) {
-      console.error('[gst-specials] Error:', err.message || err);
-      root.innerHTML = `<p style="padding:20px;color:#888;font-size:12px;">Specials are currently being updated. Please check back shortly.<br><small>${err.message || err}</small></p>`;
+      console.error('[gst-offers] Error:', err.message || err);
     }
   }
 
