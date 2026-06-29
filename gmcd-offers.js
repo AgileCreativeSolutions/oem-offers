@@ -70,10 +70,12 @@ async function updateOffersFromSheet() {
     "model-title-1":  "Model Title 1",
     "model-title-2":  "Model Title 2",
     "model-details":  "Model Details",
+    "offer-1-type":  "Offer 1 Type",
     "offer-1-price":  "Offer 1 Price",
     "offer-1-term":   "Offer 1 Term",
     "offer-1-note-1": "Offer 1 Note 1",
     "offer-1-note-2": "Offer 1 Note 2",
+    "offer-2-type":  "Offer 2 Type",
     "offer-2-price":  "Offer 2 Price",
     "offer-2-term":   "Offer 2 Term",
     "offer-2-note-1": "Offer 2 Note 1",
@@ -107,8 +109,13 @@ async function updateOffersFromSheet() {
     const imgEl = section.querySelector(".offer-image");
     const imageObj = data["Offer Image"];
     if (imgEl && imageObj?.value) {
-      imgEl.src = imageObj.value;
+      const clearSkeleton = () => imgEl.setAttribute('data-loaded', '1');
+      imgEl.addEventListener('load', clearSkeleton, { once: true });
+      imgEl.addEventListener('error', clearSkeleton, { once: true });
       imgEl.alt = data["Model Title 1"]?.value || '';
+      imgEl.src = imageObj.value;
+      // Handle images already cached/complete before listeners attached
+      if (imgEl.complete && imgEl.naturalWidth > 0) clearSkeleton();
     }
 
     // Text fields
