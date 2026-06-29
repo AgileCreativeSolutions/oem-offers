@@ -34,7 +34,14 @@
     tz_slide: '1826732084', // NEW tab — Triple Zero slide image
     gg:       '623929825',
     programs: '2028269504',
+    used:     '437612271',   // Used / Pre-Owned Specials
   };
+
+  // Page detection: the used page mounts <div data-page="used">
+  const IS_USED = (function () {
+    const el = document.querySelector('[data-page]');
+    return el && (el.getAttribute('data-page') || '').toLowerCase() === 'used';
+  })();
 
   // ── CSV fetch ──────────────────────────────────────────────────────
   async function fetchTab(gid) {
@@ -464,24 +471,174 @@
     tpl.remove();
   }
 
+  // ── Section: Used / Pre-Owned Specials (framework rebuild) ─────────
+  // Reads the Used tab and splits offers by "Card Type": hero | apr-card |
+  // program-card. Each type clones its own template card (selector-based,
+  // VV-style population). Sections with no matching offers are hidden.
+  async function buildUsedSpecials(offers) {
+    const active = offers.filter(o => isVisible(o) && o['Card Type']);
+
+    const heroOffers    = active.filter(o => o['Card Type'] === 'hero');
+    const aprOffers     = active.filter(o => o['Card Type'] === 'apr-card');
+    const programOffers = active.filter(o => o['Card Type'] === 'program-card');
+
+    // Helper: build a <li> list from List Item 1..3, escaped
+    function listHtml(o) {
+      const items = [o['List Item 1'], o['List Item 2'], o['List Item 3']].filter(Boolean);
+      return items.map(li =>
+        '<li>' + li.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</li>'
+      ).join('');
+    }
+
+    // ── Hero cards ──
+    const heroTpl = document.querySelector('.used-hero[data-hero]');
+    if (heroTpl) {
+      const heroParent = heroTpl.parentNode;
+      if (!heroOffers.length) {
+        const sec = document.getElementById('used-hero-section');
+        if (sec) sec.style.display = 'none';
+        heroTpl.remove();
+      } else {
+        heroOffers.forEach((o, i) => {
+          const card = heroTpl.cloneNode(true);
+          card.setAttribute('data-hero', String(i + 1));
+
+          const link = card.querySelector('.used-hero-link');
+          if (link) link.href = o['Image CTA URL'] || '/used-inventory/index.htm';
+          const dSrc = card.querySelector('.used-hero-src-d');
+          const mSrc = card.querySelector('.used-hero-src-m');
+          const img  = card.querySelector('.used-hero-img');
+          const dUrl = o['Image URL (desktop)'] || '';
+          const mUrl = o['Image URL (mobile)'] || dUrl;
+          if (dSrc) dSrc.srcset = dUrl;
+          if (mSrc) mSrc.srcset = mUrl;
+          if (img) { if (dUrl) img.src = dUrl; img.alt = o['Image Alt'] || ''; }
+
+          setText(card, 'used-hero-num',   o['Headline / Big Number']);
+          setText(card, 'used-hero-label', o['Subheading']);
+          setText(card, 'used-hero-desc',  o['Description']);
+
+          const cta = card.querySelector('.used-hero-cta');
+          if (cta) {
+            if (o['CTA 1 Label']) { cta.textContent = o['CTA 1 Label']; cta.href = o['CTA 1 URL'] || '#'; }
+            else cta.style.display = 'none';
+          }
+
+          if (o['Disclaimer']) {
+            setText(card, 'used-hero-disc', o['Disclaimer']);
+            const wrap = card.querySelector('.used-hero-disc-wrap');
+            if (wrap) wrap.style.display = '';
+          }
+
+          markReady(card);
+          heroParent.insertBefore(card, heroTpl);
+        });
+        heroTpl.remove();
+      }
+    }
+
+    // Merged Pre-Owned Offers section hides only if BOTH APR and program empty
+    const mergedSection = document.getElementById('used-apr-section');
+    if (mergedSection && !aprOffers.length && !programOffers.length) {
+      mergedSection.style.display = 'none';
+    }
+
+    // ── APR / finance cards ──
+    const aprTpl = document.querySelector('.used-apr[data-apr]');
+    if (aprTpl) {
+      const aprParent = aprTpl.parentNode;
+      if (!aprOffers.length) {
+        aprTpl.remove();
+      } else {
+        aprOffers.forEach((o, i) => {
+          const card = aprTpl.cloneNode(true);
+          card.setAttribute('data-apr', String(i + 1));
+
+          setText(card, 'used-apr-num',       o['Headline / Big Number']);
+          setText(card, 'used-apr-num-label', o['Subheading']);
+          setText(card, 'used-apr-cardtitle', o['Description']);
+
+          const ul = card.querySelector('.used-apr-list');
+          if (ul) { const h = listHtml(o); if (h) ul.innerHTML = h; else ul.style.display = 'none'; }
+
+          const cta1 = card.querySelector('.used-apr-cta1');
+          if (cta1) { if (o['CTA 1 Label']) { cta1.textContent = o['CTA 1 Label']; cta1.href = o['CTA 1 URL'] || '#'; } else cta1.style.display = 'none'; }
+          const cta2 = card.querySelector('.used-apr-cta2');
+          if (cta2) { if (o['CTA 2 Label']) { cta2.textContent = o['CTA 2 Label']; cta2.href = o['CTA 2 URL'] || '#'; } else cta2.style.display = 'none'; }
+
+          if (o['Disclaimer']) {
+            setText(card, 'used-apr-disc', o['Disclaimer']);
+            const wrap = card.querySelector('.used-apr-disc-wrap');
+            if (wrap) wrap.style.display = '';
+          }
+
+          markReady(card);
+          aprParent.insertBefore(card, aprTpl);
+        });
+        aprTpl.remove();
+      }
+    }
+
+    // ── Program cards ──
+    const progTpl = document.querySelector('.used-program[data-program]');
+    if (progTpl) {
+      const progParent = progTpl.parentNode;
+      if (!programOffers.length) {
+        progTpl.remove();
+      } else {
+        programOffers.forEach((o, i) => {
+          const card = progTpl.cloneNode(true);
+          card.setAttribute('data-program', String(i + 1));
+
+          const img = card.querySelector('.used-program-img');
+          if (img) { if (o['Image URL (desktop)']) img.src = o['Image URL (desktop)']; else img.style.display = 'none'; img.alt = o['Image Alt'] || ''; }
+
+          setText(card, 'used-program-eyebrow', o['Subheading']);
+          setText(card, 'used-program-title',   o['Headline / Big Number']);
+
+          const ul = card.querySelector('.used-program-list');
+          if (ul) { const h = listHtml(o); if (h) ul.innerHTML = h; else ul.style.display = 'none'; }
+
+          const cta = card.querySelector('.used-program-cta');
+          if (cta) { if (o['CTA 1 Label']) { cta.textContent = o['CTA 1 Label']; cta.href = o['CTA 1 URL'] || '#'; } else cta.style.display = 'none'; }
+
+          if (o['Disclaimer']) {
+            setText(card, 'used-program-disc', o['Disclaimer']);
+            const wrap = card.querySelector('.used-program-disc-wrap');
+            if (wrap) wrap.style.display = '';
+          }
+
+          markReady(card);
+          progParent.insertBefore(card, progTpl);
+        });
+        progTpl.remove();
+      }
+    }
+  }
+
   // ── Main ───────────────────────────────────────────────────────────
   async function init() {
     try {
-      const [leaseCsv, slideCsv, ggCsv, programsCsv] = await Promise.all([
-        fetchTab(TABS.lease),
-        TABS.tz_slide && TABS.tz_slide !== 'REPLACE_ME'
-          ? fetchTab(TABS.tz_slide).catch(() => '')
-          : Promise.resolve(''),
-        fetchTab(TABS.gg),
-        fetchTab(TABS.programs),
-      ]);
+      if (IS_USED) {
+        const usedCsv = await fetchTab(TABS.used);
+        await buildUsedSpecials(csvToOffers(usedCsv));
+      } else {
+        const [leaseCsv, slideCsv, ggCsv, programsCsv] = await Promise.all([
+          fetchTab(TABS.lease),
+          TABS.tz_slide && TABS.tz_slide !== 'REPLACE_ME'
+            ? fetchTab(TABS.tz_slide).catch(() => '')
+            : Promise.resolve(''),
+          fetchTab(TABS.gg),
+          fetchTab(TABS.programs),
+        ]);
 
-      await Promise.all([
-        buildVehicleCards(csvToOffers(leaseCsv)),
-        Promise.resolve(buildTripleZeroSlide(slideCsv)),
-        buildGettelsGotIt(csvToOffers(ggCsv)),
-        buildSpecialPrograms(csvToOffers(programsCsv)),
-      ]);
+        await Promise.all([
+          buildVehicleCards(csvToOffers(leaseCsv)),
+          Promise.resolve(buildTripleZeroSlide(slideCsv)),
+          buildGettelsGotIt(csvToOffers(ggCsv)),
+          buildSpecialPrograms(csvToOffers(programsCsv)),
+        ]);
+      }
 
       requestAnimationFrame(() => requestAnimationFrame(() => {
         document.dispatchEvent(new CustomEvent('gst:ready'));
