@@ -31,7 +31,10 @@
     '.bgv-skel-label{height:11px;width:75%;border-radius:3px;}',
     '.bgv-skel-price{height:28px;width:65%;border-radius:3px;}',
     '.bgv-skel-detail{height:10px;width:88%;border-radius:3px;}',
-    '.bgv-skel-btn{height:42px;margin:14px 20px 22px;border-radius:4px;}'
+    '.bgv-skel-btn{height:42px;margin:14px 20px 22px;border-radius:4px;}',
+    /* Card ribbon — empty = thin accent bar; with text = promo banner */
+    '.bgv-card-ribbon{background:var(--accent);height:14px;border-radius:4px 4px 0 0;}',
+    '.bgv-card-ribbon-text{height:auto;color:#fff;font-weight:700;text-align:center;padding:10px 16px;font-size:0.95rem;line-height:1.3;letter-spacing:0.3px;}'
   ].join('');
 
   function injectSkelCSS() {
@@ -255,9 +258,15 @@
       .map(function (p) { return '<p class="acs-text-4 acs-lh-6 acs-mb-3">' + p.trim() + '</p>'; })
       .join('');
 
+    /* Ribbon — empty = thin accent bar; with text = promo banner */
+    var ribbonHtml = '<div class="bgv-card-ribbon' + (o.ribbon_text ? ' bgv-card-ribbon-text' : '') + '">' +
+      (o.ribbon_text || '') +
+      '</div>';
+
     return [
       '<div class="acs-four-lg acs-six-md acs-align-items-center acs-columns bgv-special-card" data-make="' + make + '">',
         '<div class="acs-bg-white acs-bs-1 acs-my-5 acs-card">',
+          ribbonHtml,
           '<div class="acs-text-left">',
             logoRow,
             /* Vehicle image — alt built from title fields */
