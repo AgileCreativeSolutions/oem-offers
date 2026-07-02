@@ -15,13 +15,14 @@ return rows;
 }
 
 // ---------- FETCH SHEET ----------
-async function fetchSheet(url) {
+async function fetchSheet(url, skipTitleRow = false) {
 const modelData = {};
 try {
 const response = await fetch(url, { cache: 'no-store' });
 if (!response.ok) throw new Error(`Failed to fetch: ${url}`);
-const parsed = parseCSV(await response.text());
+let parsed = parseCSV(await response.text());
 if (!parsed.length) return modelData;
+if (skipTitleRow) parsed = parsed.slice(1); // drop title band (row 1); header is row 2
 const [fields, ...dataRows] = parsed;
 for (let col = 1; col < fields.length; col++) {
 const modelName = fields[col];
@@ -36,6 +37,25 @@ modelData[modelName][label] = row[col];
 }
 } catch (err) {
 console.error('Sheet fetch error:', err);
+}
+return modelData;
+}
+
+// ---------- MERGE MULTIPLE SHEET TABS ----------
+async function fetchAndMergeTabs(tabMap) {
+const modelData = {};
+for (const [tabName, cfg] of Object.entries(tabMap)) {
+try {
+const url = typeof cfg === 'string' ? cfg : cfg.url;
+const skipTitleRow = typeof cfg === 'string' ? false : !!cfg.skipTitleRow;
+const merged = await fetchSheet(url, skipTitleRow);
+for (const [modelName, fields] of Object.entries(merged)) {
+modelData[modelName] = modelData[modelName] || {};
+Object.assign(modelData[modelName], fields);
+}
+} catch (err) {
+console.error(`Error processing ${tabName}:`, err);
+}
 }
 return modelData;
 }
@@ -60,10 +80,70 @@ const COL_WIDTHS = {
 3: 'acs-twelve-lg acs-four-xl acs-columns acs-my-2',
 };
 
+// ---------- MANAGER / FEATURED CARD RENDERER ----------
+function renderManagerCard(section, data) {
+// Image
+const imgEl = section.querySelector('.offer-image');
+if (imgEl) {
+imgEl.src = data['Offer Image'] || '';
+imgEl.alt = data['Model Title 1'] || '';
+}
+
+// Text fields
+const textMap = {
+'model-title-1': 'Model Title 1',
+'model-title-2': 'Model Title 2',
+'model-details': 'Model Details',
+'save-amount':   'Save Amount',
+'save-amount-2': 'Save Amount 2',
+'disclaimer':    'Disclaimer'
+};
+Object.entries(textMap).forEach(([className, key]) => {
+const el = section.querySelector(`.${className}`);
+if (!el) return;
+const val = data[key];
+setText(el, val);
+if (className === 'disclaimer') el.style.display = val ? '' : 'none';
+});
+
+// CTA link (href from CTA Link, label from CTA Text span)
+const ctaEl = section.querySelector('.cta-link');
+if (ctaEl) {
+const ctaLink = data['CTA Link'];
+const ctaText = data['CTA Text'];
+if (!ctaLink || isHide(ctaLink)) {
+hide(ctaEl);
+} else {
+try {
+const url = new URL(ctaLink, location.origin);
+if (url.protocol === 'http:' || url.protocol === 'https:') ctaEl.href = url.href;
+} catch { ctaEl.href = ctaLink; }
+ctaEl.style.display = 'inline-block';
+}
+const spanEl = ctaEl.querySelector('.cta-text');
+if (spanEl && ctaText) spanEl.textContent = ctaText;
+}
+
+// Call For Details phone
+const callEl = section.querySelector('.call-for-details');
+if (callEl) {
+const phoneVal = data['Call For Details Phone'];
+if (phoneVal && !isHide(phoneVal)) {
+callEl.href = `tel:+1${String(phoneVal).replace(/\D/g, '')}`;
+callEl.style.display = 'inline-block';
+} else {
+hide(callEl);
+}
+}
+}
+
 // ---------- MAIN ----------
 async function updateOffersFromSheet() {
-const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSVlDeBDpVWbm6feb9LwuQuX6OpRmi0ktrKnR5Qe4BBaFZBPCqCCHwAm30uLlAv-g/pub?output=csv&gid=1386781097';
-const modelData = await fetchSheet(SHEET_URL);
+const csvTabs = {
+"LEASE": 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSVlDeBDpVWbm6feb9LwuQuX6OpRmi0ktrKnR5Qe4BBaFZBPCqCCHwAm30uLlAv-g/pub?output=csv&gid=1386781097',
+"MGR":   { url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSVlDeBDpVWbm6feb9LwuQuX6OpRmi0ktrKnR5Qe4BBaFZBPCqCCHwAm30uLlAv-g/pub?output=csv&gid=942788749', skipTitleRow: true }
+};
+const modelData = await fetchAndMergeTabs(csvTabs);
 
 document.querySelectorAll('.car-offer').forEach(section => {
 const key  = section.dataset.model;
@@ -72,6 +152,12 @@ const data = modelData[key];
 // Hide entire card if no data or Visibility = hide
 if (!data || isHide(data['Visibility'])) {
 hide(section);
+return;
+}
+
+// ----- Manager / Featured cards (GMCD "Disc" layout) -----
+if (section.querySelector('.model-title-1')) {
+renderManagerCard(section, data);
 return;
 }
 
