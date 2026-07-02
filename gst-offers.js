@@ -290,6 +290,31 @@
     document.querySelectorAll('[data-nav="links"]').forEach(span => { span.innerHTML = navHtml; });
   }
 
+  // ── Section: "Every Lease Includes" bar (static HTML, ES-translate) ─
+  // The bar's copy is hardcoded in the page. On the English page there's
+  // nothing to do; on the Spanish page we translate each string in place,
+  // preserving the leading "✓ " checkmark on the tags (the mark shouldn't
+  // round-trip through the translator).
+  async function buildIncludesBar() {
+    if (!IS_ES) return;
+    const bar = document.getElementById('gst-includes-bar');
+    if (!bar) return;
+
+    const nodes = [
+      bar.querySelector('.inc-label-main'),
+      bar.querySelector('.inc-label-sub'),
+      ...bar.querySelectorAll('.inc-tag'),
+    ].filter(Boolean);
+    if (!nodes.length) return;
+
+    // Strip a leading check + whitespace so only real words are translated
+    const marks   = nodes.map(n => (n.textContent.match(/^\s*✓\s*/) || [''])[0]);
+    const strings = nodes.map((n, i) => n.textContent.slice(marks[i].length).trim());
+
+    const out = await translateBatch(strings);
+    nodes.forEach((n, i) => { n.textContent = marks[i] + (out[i] || strings[i]); });
+  }
+
   // ── Section: Triple Zero Event Slide (image from sheet) ────────────
   // Reads the slide tab as a simple key->value map straight down columns
   // A/B. This deliberately bypasses csvToOffers' header-row detection: a
@@ -648,6 +673,7 @@
 
         await Promise.all([
           buildVehicleCards(csvToOffers(leaseCsv)),
+          buildIncludesBar(),
           buildTripleZeroSlide(slideCsv),
           buildGettelsGotIt(csvToOffers(ggCsv)),
           buildSpecialPrograms(csvToOffers(programsCsv)),
