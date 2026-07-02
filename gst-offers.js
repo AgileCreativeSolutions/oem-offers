@@ -295,9 +295,13 @@
   // A/B. This deliberately bypasses csvToOffers' header-row detection: a
   // single-column settings tab has no "Field" header, and the offer-column
   // logic would otherwise consume the first data row as a header and drop it.
-  function buildTripleZeroSlide(csvText) {
+  async function buildTripleZeroSlide(csvText) {
     const pic = document.getElementById('tz-slide');
     if (!pic) return;
+
+    // The slide's wrapper holds both the <picture> and the disclaimer block,
+    // so hide the wrapper (grandparent of <picture>) — not just <picture>.
+    const slideWrap = pic.closest('.acs-wrapper') || pic.parentNode;
 
     const rows = parseCsv(csvText || '');
     const kv = {};
@@ -308,7 +312,7 @@
     });
 
     if ((kv['Visibility'] || '').trim().toLowerCase() === 'hide') {
-      pic.parentNode.style.display = 'none';
+      slideWrap.style.display = 'none';
       return;
     }
 
@@ -316,8 +320,9 @@
     const mobile  = kv['Image URL (mobile)']  || kv['Mobile']  || desktop;
     const alt     = kv['Image Alt'] || 'Gettel Stadium Toyota Triple Zero Event';
     const link    = kv['CTA URL'] || kv['Image CTA URL'] || '';
+    let   disc    = kv['Disclaimer'] || '';
 
-    if (!desktop) { pic.parentNode.style.display = 'none'; return; }
+    if (!desktop) { slideWrap.style.display = 'none'; return; }
 
     const dSrc = pic.querySelector('.tz-slide-desktop');
     const mSrc = pic.querySelector('.tz-slide-mobile');
@@ -331,6 +336,15 @@
       a.href = link;
       pic.parentNode.insertBefore(a, pic);
       a.appendChild(pic);
+    }
+
+    // Disclaimer — only reveal the roll-up if the sheet supplies text
+    if (disc) {
+      if (IS_ES) { const [t] = await translateBatch([disc]); disc = t || disc; }
+      const discEl = slideWrap.querySelector('.tz-disc');
+      const wrap   = slideWrap.querySelector('.tz-disc-wrap');
+      if (discEl) discEl.textContent = disc;
+      if (wrap)   wrap.style.display = '';
     }
   }
 
@@ -634,7 +648,7 @@
 
         await Promise.all([
           buildVehicleCards(csvToOffers(leaseCsv)),
-          Promise.resolve(buildTripleZeroSlide(slideCsv)),
+          buildTripleZeroSlide(slideCsv),
           buildGettelsGotIt(csvToOffers(ggCsv)),
           buildSpecialPrograms(csvToOffers(programsCsv)),
         ]);
