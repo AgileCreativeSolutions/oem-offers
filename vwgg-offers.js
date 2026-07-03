@@ -121,6 +121,15 @@ function populateCard(card, data, slotName) {
     setText(q(sub, '.vw-monthly-payment'), data['monthly payment ' + i]);
     setText(q(sub, '.vw-down-payment'),    data['down payment ' + i]);
     setText(q(sub, '.vw-lease-months'),    data['lease months ' + i]);
+
+    // Sub-labels — only override the default text when the sheet cell is non-empty
+    const setLabel = function(sel, val) {
+      const el = q(sub, sel);
+      if (el && val && String(val).trim()) el.textContent = String(val).trim();
+    };
+    setLabel('.vw-monthly-label', data['monthly label ' + i]);
+    setLabel('.vw-down-label',    data['down label ' + i]);
+    setLabel('.vw-months-label',  data['months label ' + i]);
   });
 
   // Dividers — show only between two visible offers (N = 2..4)
