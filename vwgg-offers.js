@@ -98,11 +98,58 @@ function populateCard(card, data, slotName) {
     el.className = el.className.replace(/acs-\S*gradient\S*/g, '').trim() + ' ' + grad;
   });
 
-  setText(q(card, '.vw-vehicle-name'),    data['model title']);
-  setText(q(card, '.vw-monthly-payment'), data['monthly payment']);
-  setText(q(card, '.vw-down-payment'),    data['down payment']);
-  setText(q(card, '.vw-lease-months'),    data['lease months']);
-  setText(q(card, '.vw-disclaimer'),      data['disclaimer']);
+  setText(q(card, '.vw-vehicle-name'), data['model title']);
+
+  const OFFER_COUNT = 4;
+  const offerVisible = [];
+
+  card.querySelectorAll('.vw-sub-offer').forEach(function(sub) {
+    const i = sub.getAttribute('data-offer'); // "1".."4"
+
+    // Hide this offer if "Offer N Card" = hide, or all its fields are empty
+    const cardFlag = data['offer ' + i + ' card'];
+    const explicitHide = cardFlag && isHide(cardFlag);
+    const autoHide = !data['offer type ' + i] && !data['monthly payment ' + i]
+                  && !data['down payment ' + i] && !data['lease months ' + i];
+    const visible = !(explicitHide || autoHide);
+    offerVisible[Number(i)] = visible;
+
+    if (!visible) { hide(sub); return; }
+    show(sub);
+
+    setText(q(sub, '.vw-offer-type'),      data['offer type ' + i]);
+    setText(q(sub, '.vw-monthly-payment'), data['monthly payment ' + i]);
+    setText(q(sub, '.vw-down-payment'),    data['down payment ' + i]);
+    setText(q(sub, '.vw-lease-months'),    data['lease months ' + i]);
+  });
+
+  // Dividers — show only between two visible offers (N = 2..4)
+  card.querySelectorAll('.vw-divider').forEach(function(div) {
+    const n = div.getAttribute('data-divider'); // "2".."4"
+    const priorVisible = offerVisible.slice(1, Number(n)).some(Boolean);
+    const divVal = data['offer ' + n + ' divider'] || '';
+
+    if (!offerVisible[Number(n)] || !priorVisible || isHide(divVal)) {
+      hide(div);
+    } else {
+      show(div);
+      const txt = q(div, '.vw-divider-text');
+      if (txt) txt.textContent = String(divVal).trim() || 'or';
+    }
+  });
+
+  // Disclaimers — one per offer, collected at card bottom; hide if empty or offer hidden
+  card.querySelectorAll('.vw-disclaimer').forEach(function(disc) {
+    const i = disc.getAttribute('data-disc'); // "1".."4"
+    const dv = data['offer ' + i + ' disclaimer'] || '';
+    if (!offerVisible[Number(i)] || !dv) {
+      disc.textContent = '';
+      hide(disc);
+    } else {
+      disc.textContent = dv;
+      show(disc);
+    }
+  });
 
   const stockEl = q(card, '.vw-stock-number');
   if (stockEl) {
