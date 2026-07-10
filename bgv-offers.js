@@ -185,8 +185,10 @@
     if ((o.lease_block || '').toLowerCase() !== 'hide' && o.lease_payment) {
       leaseBlock = [
         '<div class="acs-columns acs-six-lg acs-pb-4 acs-align-self-center">',
-          '<p class="acs-lh-5 acs-text-5 acs-mb-1 acs-bold">Lease</p>',
-          '<p class="acs-lh-4 acs-text-10 acs-bold acs-accent">' + o.lease_payment + '/mo.</p>',
+          o.lease_heading
+            ? '<p class="acs-lh-5 acs-text-5 acs-mb-1 acs-bold">' + o.lease_heading + '</p>'
+            : '',
+          '<p class="acs-lh-4 acs-text-10 acs-bold acs-accent">' + o.lease_payment + '/mo.<span class="acs-text-5" style="color:#000;"> + Tax</span></p>',
           o.lease_term && o.lease_miles_per_year
             ? '<p class="acs-lh-4 acs-text-5 acs-mb-1">' + o.lease_term + ' Months | ' + o.lease_miles_per_year + ' Miles/Year</p>'
             : '',
@@ -202,7 +204,9 @@
     if ((o.purchase_block || '').toLowerCase() !== 'hide' && o.purchase_price) {
       purchaseBlock = [
         '<div class="acs-columns acs-six-lg acs-pb-4 acs-align-self-center">',
-          '<p class="acs-lh-5 acs-text-5 acs-mb-1 acs-bold">Purchase for</p>',
+          o.purchase_heading
+            ? '<p class="acs-lh-5 acs-text-5 acs-mb-1 acs-bold">' + o.purchase_heading + '</p>'
+            : '',
           '<p class="acs-lh-4 acs-text-10 acs-bold acs-accent">' + o.purchase_price + '</p>',
           o.purchase_savings
             ? '<p class="acs-lh-4 acs-text-5 acs-mb-1">' + o.purchase_savings + '</p>'
@@ -220,7 +224,9 @@
       var aprColWidth = o.apr_note ? 'acs-ten-lg' : 'acs-six-lg';
       financeBlock = [
         '<div class="acs-columns ' + aprColWidth + ' acs-pb-4 acs-align-self-center">',
-          '<p class="acs-lh-5 acs-text-5 acs-mb-1 acs-bold">Finance Offers</p>',
+          o.finance_heading
+            ? '<p class="acs-lh-5 acs-text-5 acs-mb-1 acs-bold">' + o.finance_heading + '</p>'
+            : '',
           '<p class="acs-lh-4 acs-text-10 acs-bold acs-accent">' + o.apr + '</p>',
           o.apr_term
             ? '<p class="acs-lh-4 acs-text-5 acs-mb-1">for ' + o.apr_term + ' Months</p>'
