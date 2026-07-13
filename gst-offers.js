@@ -173,11 +173,62 @@
     card.style.display = '';
   }
 
+  // ── Skeleton loaders ───────────────────────────────────────────────
+  // Card templates don't exist as real content until a fetch resolves and
+  // the builder clones them, so there's nothing to attach a "loading" state
+  // to. Instead we inject a fixed number of shimmer placeholder cards into
+  // each section up front (before any fetch), then tear them down the moment
+  // that section's real cards are about to be inserted. Skeletons copy the
+  // template's grid width classes so they occupy the same column layout.
+  const SKELETON_COUNTS = { car: 6, gg: 3, sp: 3 };
+
+  function skeletonCard(widthClasses) {
+    const col = document.createElement('div');
+    col.className = widthClasses + ' acs-my-2 acs-flex gst-skel';
+    col.setAttribute('data-skel', '1');
+    col.innerHTML =
+      '<div class="acs-offer-cell acs-bg-white acs-br-2 acs-border acs-flex acs-flex-column" style="width:100%;overflow:hidden;">' +
+        '<div class="gst-skel-box" style="height:12em;"></div>' +
+        '<div class="acs-p-5 acs-flex acs-flex-column acs-flex-grow">' +
+          '<div class="gst-skel-line" style="width:70%;height:1.4em;"></div>' +
+          '<div class="gst-skel-line" style="width:100%;"></div>' +
+          '<div class="gst-skel-line" style="width:92%;"></div>' +
+          '<div class="gst-skel-line" style="width:60%;"></div>' +
+          '<div class="gst-skel-line gst-skel-btn" style="width:100%;height:2.4em;margin-top:auto;"></div>' +
+        '</div>' +
+      '</div>';
+    return col;
+  }
+
+  function renderSkeletons() {
+    const map = [
+      { tpl: '.car-offer[data-model]', n: SKELETON_COUNTS.car },
+      { tpl: '.gg-offer[data-gg]',     n: SKELETON_COUNTS.gg },
+      { tpl: '.sp-offer[data-sp]',     n: SKELETON_COUNTS.sp },
+    ];
+    map.forEach(({ tpl, n }) => {
+      const t = document.querySelector(tpl);
+      if (!t) return;
+      // Reuse the template's column width classes; drop the offer/state hooks.
+      const widths = t.className
+        .replace(/\b(car-offer|gg-offer|sp-offer|acs-flex|acs-my-2)\b/g, '')
+        .trim().replace(/\s+/g, ' ');
+      const parent = t.parentNode;
+      for (let i = 0; i < n; i++) parent.insertBefore(skeletonCard(widths), t);
+    });
+  }
+
+  function clearSkeletonsIn(container) {
+    if (!container) return;
+    container.querySelectorAll(':scope > .gst-skel[data-skel="1"]').forEach(el => el.remove());
+  }
+
   // ── Section: New Toyota Specials (vehicle cards, 4 offers each) ─────
   async function buildVehicleCards(offers) {
     const tpl = document.querySelector('.car-offer[data-model]');
     if (!tpl) return;
     const parent = tpl.parentNode;
+    clearSkeletonsIn(parent);
     const active = offers.filter(o => isVisible(o) && o['Year'] && o['Model']);
 
     if (!active.length) {
@@ -397,6 +448,7 @@
     const tpl = document.querySelector('.gg-offer[data-gg]');
     if (!tpl) return;
     const parent = tpl.parentNode;
+    clearSkeletonsIn(parent);
     const active = offers.filter(o => isVisible(o) && o['Title']);
 
     // Section header (eyebrow/title/subtitle live in field rows)
@@ -454,6 +506,7 @@
     const tpl = document.querySelector('.sp-offer[data-sp]');
     if (!tpl) return;
     const parent = tpl.parentNode;
+    clearSkeletonsIn(parent);
     const active = offers.filter(o => isVisible(o) && o['Title']);
 
     let secTitle = (offers.find(o => o['Section Title']) || {})['Section Title'] || '';
@@ -677,6 +730,11 @@
   // ── Main ───────────────────────────────────────────────────────────
   async function init() {
     try {
+      // Paint shimmer skeletons before any network work so the page never
+      // shows empty card wells while the sheet loads. Builders tear down
+      // their own section's skeletons as real cards are inserted.
+      if (!IS_USED) renderSkeletons();
+
       if (IS_USED) {
         const usedCsv = await fetchTab(TABS.used);
         await buildUsedSpecials(csvToOffers(usedCsv));
@@ -706,6 +764,8 @@
 
     } catch (err) {
       console.error('[gst-offers] Error:', err.message || err);
+      // Don't leave the page shimmering if the fetch failed.
+      document.querySelectorAll('.gst-skel[data-skel="1"]').forEach(el => el.remove());
     }
   }
 
