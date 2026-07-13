@@ -297,6 +297,25 @@
   // round-trip through the translator).
   async function buildIncludesBar() {
     if (!IS_ES) return;
+
+    // Translate the static "New Toyota Specials" headline (hardcoded in the
+    // template, not sheet-driven, so it never enters the card/section path).
+    const ntHeadline = document.querySelector('.acs-wrapper.acs-dark .acs-h1.acs-bold');
+    if (ntHeadline) {
+      const src = ntHeadline.textContent.replace(/\u00a0/g, ' ').trim();
+      if (src) { const [t] = await translateBatch([src]); if (t) ntHeadline.textContent = t; }
+    }
+
+    // Translate the static "Interested in a specific model?" subhead. It's a
+    // bare .acs-h6 with no hook, so match by its non-empty text within the
+    // dark wrapper (the sibling template .acs-h6 nodes are empty until filled).
+    const ntSub = [...document.querySelectorAll('.acs-wrapper.acs-dark .acs-h6')]
+      .find(el => el.textContent.trim() && !el.classList.contains('tagline'));
+    if (ntSub) {
+      const src = ntSub.textContent.trim();
+      const [t] = await translateBatch([src]); if (t) ntSub.textContent = t;
+    }
+
     const bar = document.getElementById('gst-includes-bar');
     if (!bar) return;
 
