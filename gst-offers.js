@@ -12,6 +12,7 @@
  *
  * Sheet structure (field rows × offer columns). Tabs:
  *   lease    (gid 479064372) — "Special Offers": vehicle cards, 4 offers each
+ *   leases399(gid 1066747404)— "$399 Leases": vehicle cards, same schema
  *   tz_slide (NEW tab)       — Triple Zero event slide image URLs
  *   gg       (gid 623929825) — Gettel's Got It
  *   programs (gid 2028269504)— Special Programs
@@ -31,17 +32,23 @@
 
   const TABS = {
     lease:    '479064372',   // "Special Offers" — vehicle cards
+    leases399: '1066747404', // "$399 Leases" — vehicle cards
     tz_slide: '1826732084', // NEW tab — Triple Zero slide image
     gg:       '623929825',
     programs: '2028269504',
     used:     '437612271',   // Used / Pre-Owned Specials
   };
 
-  // Page detection: the used page mounts <div data-page="used">
-  const IS_USED = (function () {
+  // Page detection: pages mount <div data-page="..."> to select a mode.
+  //   used -> Used / Pre-Owned Specials
+  //   399  -> $399 Leases (vehicle cards only, off the leases399 tab)
+  // No attribute = the standard specials page (lease + tz + gg + programs).
+  const PAGE = (function () {
     const el = document.querySelector('[data-page]');
-    return el && (el.getAttribute('data-page') || '').toLowerCase() === 'used';
+    return el ? (el.getAttribute('data-page') || '').trim().toLowerCase() : '';
   })();
+  const IS_USED = PAGE === 'used';
+  const IS_399  = PAGE === '399';
 
   // ── CSV fetch ──────────────────────────────────────────────────────
   async function fetchTab(gid) {
@@ -738,6 +745,11 @@
       if (IS_USED) {
         const usedCsv = await fetchTab(TABS.used);
         await buildUsedSpecials(csvToOffers(usedCsv));
+      } else if (IS_399) {
+        // Vehicle cards only — the $399 page carries no tz/gg/programs
+        // sections, so fetching those tabs would just block the render.
+        const leaseCsv = await fetchTab(TABS.leases399);
+        await buildVehicleCards(csvToOffers(leaseCsv));
       } else {
         const [leaseCsv, slideCsv, ggCsv, programsCsv] = await Promise.all([
           fetchTab(TABS.lease),
