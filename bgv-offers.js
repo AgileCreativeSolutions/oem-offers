@@ -4,7 +4,9 @@
  * Agile Creative Solutions
  *
  * Spreadsheet layout: Column A = Field names, Columns B–P = Offer 1–15
- * Visibility: blank = show | "hide" = suppress
+ * Visibility: blank = show | "hide" = suppress (row-level)
+ * Offer blocks: 4 generic slots (Type / Headline / Terms / Note)
+ *               a block renders only if its Headline cell is filled
  * Host: AgileCreativeSolutions.github.io/oem-offers/
  */
 
@@ -15,6 +17,7 @@
   var CONTAINER_ID  = 'bgv-specials-container';
   var NAV_ID        = 'bgv-filter-nav';
   var NUM_SLOTS     = 15;
+  var NUM_OFFER_BLOCKS = 4;
   var SKELETON_COUNT = 6;
 
   /* ─── Skeleton CSS ────────────────────────────────────────────── */
@@ -180,58 +183,29 @@
   function renderCard(o) {
     var make = (o.make || '').toLowerCase();
 
-    /* Lease block — hidden if lease_block = "hide" OR lease_payment is blank */
-    var leaseBlock = '';
-    if ((o.lease_block || '').toLowerCase() !== 'hide' && o.lease_payment) {
-      leaseBlock = [
-        '<div class="acs-columns acs-six-lg acs-pb-4 acs-align-self-center">',
-          o.lease_heading
-            ? '<p class="acs-lh-5 acs-text-5 acs-mb-1 acs-bold">' + o.lease_heading + '</p>'
-            : '',
-          '<p class="acs-lh-4 acs-text-10 acs-bold acs-accent">' + o.lease_payment + '/mo.<span class="acs-text-5" style="color:#000;"> + Tax</span></p>',
-          o.lease_term && o.lease_miles_per_year
-            ? '<p class="acs-lh-4 acs-text-5 acs-mb-1">' + o.lease_term + ' Months | ' + o.lease_miles_per_year + ' Miles/Year</p>'
-            : '',
-          o.lease_cash_down
-            ? '<p class="acs-lh-4 acs-text-5 acs-mb-1">' + o.lease_cash_down + ' Cash Down</p>'
-            : '',
-        '</div>'
-      ].join('');
-    }
+    /* Offer blocks 1-N — a block renders only if its Headline is filled.
+       Each line within a block renders only if that cell is filled. */
+    var offerBlocks = '';
+    for (var n = 1; n <= NUM_OFFER_BLOCKS; n++) {
+      var oType     = o['offer_' + n + '_type']     || '';
+      var oHeadline = o['offer_' + n + '_headline'] || '';
+      var oTerms    = o['offer_' + n + '_terms']    || '';
+      var oNote     = o['offer_' + n + '_note']     || '';
 
-    /* Purchase block — hidden if purchase_block = "hide" OR purchase_price is blank */
-    var purchaseBlock = '';
-    if ((o.purchase_block || '').toLowerCase() !== 'hide' && o.purchase_price) {
-      purchaseBlock = [
-        '<div class="acs-columns acs-six-lg acs-pb-4 acs-align-self-center">',
-          o.purchase_heading
-            ? '<p class="acs-lh-5 acs-text-5 acs-mb-1 acs-bold">' + o.purchase_heading + '</p>'
-            : '',
-          '<p class="acs-lh-4 acs-text-10 acs-bold acs-accent">' + o.purchase_price + '</p>',
-          o.purchase_savings
-            ? '<p class="acs-lh-4 acs-text-5 acs-mb-1">' + o.purchase_savings + '</p>'
-            : '',
-        '</div>'
-      ].join('');
-    }
+      if (!oHeadline) continue;
 
-    /* Finance block — hidden if finance_block = "hide" OR apr is blank */
-    var financeBlock = '';
-    if ((o.finance_block || '').toLowerCase() !== 'hide' && o.apr) {
-      var aprNote = o.apr_note
-        ? '<p class="acs-lh-4 acs-text-4 acs-mb-1 acs-bg-accent-orange acs-white acs-p-2">' + o.apr_note + '</p>'
-        : '';
-      var aprColWidth = o.apr_note ? 'acs-ten-lg' : 'acs-six-lg';
-      financeBlock = [
-        '<div class="acs-columns ' + aprColWidth + ' acs-pb-4 acs-align-self-center">',
-          o.finance_heading
-            ? '<p class="acs-lh-5 acs-text-5 acs-mb-1 acs-bold">' + o.finance_heading + '</p>'
+      offerBlocks += [
+        '<div class="acs-columns acs-six-lg acs-pb-4">',
+          oType
+            ? '<p class="acs-lh-5 acs-text-5 acs-mb-1 acs-bold">' + oType + '</p>'
             : '',
-          '<p class="acs-lh-4 acs-text-10 acs-bold acs-accent">' + o.apr + '</p>',
-          o.apr_term
-            ? '<p class="acs-lh-4 acs-text-5 acs-mb-1">for ' + o.apr_term + ' Months</p>'
+          '<p class="acs-lh-4 acs-text-10 acs-bold acs-accent acs-mb-1">' + oHeadline + '</p>',
+          oTerms
+            ? '<p class="acs-lh-4 acs-text-5 acs-mb-1">' + oTerms + '</p>'
             : '',
-          aprNote,
+          oNote
+            ? '<p class="acs-lh-4 acs-text-4 acs-mb-1 acs-opacity-70">' + oNote + '</p>'
+            : '',
         '</div>'
       ].join('');
     }
@@ -281,10 +255,8 @@
             '<p class="acs-h6 acs-text-center acs-px-6 acs-mb-3">' + (o.title_line_1 || '') + '<br>' + (o.title_line_2 || '') + '</p>',
             '<p class="acs-text-center">MSRP: ' + (o.msrp || '') + ' | Stock# ' + (o.stock_number || '') + '</p>',
             /* Offer blocks */
-            '<div class="acs-row acs-text-center acs-justify-content-center acs-pt-5">',
-              leaseBlock,
-              purchaseBlock,
-              financeBlock,
+            '<div class="acs-row acs-p-5">',
+              offerBlocks,
             '</div>',
             /* CTA */
             '<div class="acs-row">',
