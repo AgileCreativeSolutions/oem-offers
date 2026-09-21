@@ -386,6 +386,23 @@
     document.querySelectorAll('[data-nav="links"]').forEach(span => { span.innerHTML = navHtml; });
   }
 
+  // ── Spanish: static UI labels (buttons + "Disclaimer" toggles) ─────
+  // Runs once after every section has rendered, so it catches labels that
+  // are hardcoded in the page ("Get This Special", "Disclaimer") and the
+  // vehicle Shop button label from the sheet (or its "Shop Inventory"
+  // default). The disclaimer text itself is already translated per section.
+  async function translateUiLabels() {
+    if (!IS_ES) return;
+    const nodes = [
+      ...document.querySelectorAll('details > summary'),
+      ...document.querySelectorAll('.car-offer a.acs-button, .car-offer .shopping-link-text'),
+    ].filter(n => !n.closest('.gst-skel') && n.textContent.trim());
+    if (!nodes.length) return;
+    const strings = nodes.map(n => n.textContent.trim());
+    const out = await translateBatch(strings);
+    nodes.forEach((n, i) => { if (out[i]) n.textContent = out[i]; });
+  }
+
   // ── Section: "Every Lease Includes" bar (static HTML, ES-translate) ─
   // The bar's copy is hardcoded in the page. On the English page there's
   // nothing to do; on the Spanish page we translate each string in place,
@@ -806,6 +823,8 @@
           buildSpecialPrograms(csvToOffers(programsCsv)),
         ]);
       }
+
+      await translateUiLabels();
 
       requestAnimationFrame(() => requestAnimationFrame(() => {
         document.dispatchEvent(new CustomEvent('gst:ready'));
