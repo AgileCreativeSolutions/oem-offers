@@ -138,24 +138,62 @@
     try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch {}
   }
 
-  async function translateBatch(strings) {
-    if (!strings.length) return strings;
-    const cacheKey = 'gst_xlat_' + hashStr(strings.join('|||'));
+  // Google's free endpoint is a GET, so everything rides in the URL. The
+  // vehicle cards used to send ~19 strings per vehicle (disclaimers included)
+  // in one request, which blew past the URL limit, errored, and silently fell
+  // back to English. Requests are now deduped, stripped of empty strings, and
+  // chunked under a URL budget. A chunk whose delimiter count comes back wrong
+  // is split in half and retried so strings never land in the wrong slot.
+  const XLAT_DELIM  = ' ||| ';
+  const XLAT_BUDGET = 1800; // max encoded chars of q= per request
+
+  async function translateChunk(chunk) {
+    const cacheKey = 'gst_xlat_' + hashStr(chunk.join('|||'));
     const cached   = cacheGet(cacheKey);
-    if (cached) return cached;
-    const DELIM = ' ||| ';
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=es&dt=t&q=${encodeURIComponent(strings.join(DELIM))}`;
+    if (cached && cached.length === chunk.length) return cached;
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=es&dt=t&q=${encodeURIComponent(chunk.join(XLAT_DELIM))}`;
     try {
-      const data   = await (await fetch(url)).json();
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data   = await res.json();
       const joined = (data[0] || []).map(c => c[0] || '').join('');
-      let result   = joined.split(/\s*\|\|\|\s*/).map(s => s.trim());
-      while (result.length < strings.length) result.push(strings[result.length]);
-      result = result.slice(0, strings.length);
+      if (chunk.length === 1) {
+        const one = [joined.trim() || chunk[0]];
+        cacheSet(cacheKey, one);
+        return one;
+      }
+      const result = joined.split(/\s*\|\s*\|\s*\|\s*/).map(s => s.trim());
+      if (result.length !== chunk.length) {
+        const mid = Math.ceil(chunk.length / 2);
+        const [a, b] = await Promise.all([translateChunk(chunk.slice(0, mid)), translateChunk(chunk.slice(mid))]);
+        return a.concat(b);
+      }
       cacheSet(cacheKey, result);
       return result;
     } catch {
-      return strings;
+      return chunk;
     }
+  }
+
+  async function translateBatch(strings) {
+    if (!strings.length) return strings;
+    const keys = strings.map(s => (s || '').trim());
+    const uniq = [...new Set(keys.filter(Boolean))];
+    if (!uniq.length) return strings.map(s => s || '');
+
+    const chunks = [];
+    let cur = [], len = 0;
+    uniq.forEach(s => {
+      const cost = encodeURIComponent(s + XLAT_DELIM).length;
+      if (cur.length && len + cost > XLAT_BUDGET) { chunks.push(cur); cur = []; len = 0; }
+      cur.push(s); len += cost;
+    });
+    if (cur.length) chunks.push(cur);
+
+    const results = await Promise.all(chunks.map(translateChunk));
+    const map = new Map();
+    chunks.forEach((c, ci) => c.forEach((s, si) => map.set(s, results[ci][si] || s)));
+    return keys.map((k, i) => (k ? map.get(k) : (strings[i] || '')));
   }
 
   // ── Small DOM helpers ──────────────────────────────────────────────
