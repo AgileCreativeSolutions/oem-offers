@@ -1,4 +1,4 @@
-/**
+  /**
  * gst-offers.js
  * Gettel Stadium Toyota — Dynamic Specials Insertion (Framework / VV-style build)
  * AgileCreativeSolutions / oem-offers
@@ -13,7 +13,7 @@
  * Sheet structure (field rows × offer columns). Tabs:
  *   lease    (gid 479064372) — "Special Offers": vehicle cards, 4 offers each
  *   leases399(gid 1066747404)— "$399 Leases": vehicle cards, same schema
- *   tz_slide (NEW tab)       — Triple Zero event slide image URLs
+ *   tz_banner(gid 34597066) — Triple Zero Banner: 4 stat items + CTA
  *   gg       (gid 623929825) — Gettel's Got It
  *   programs (gid 2028269504)— Special Programs
  *
@@ -33,7 +33,7 @@
   const TABS = {
     lease:    '479064372',   // "Special Offers" — vehicle cards
     leases399: '1066747404', // "$399 Leases" — vehicle cards
-    tz_slide: '1826732084', // NEW tab — Triple Zero slide image
+    tz_banner: '34597066',   // "Triple Zero Banner" — stat items + CTA
     gg:       '623929825',
     programs: '2028269504',
     used:     '437612271',   // Used / Pre-Owned Specials
@@ -447,62 +447,93 @@
     nodes.forEach((n, i) => { n.textContent = marks[i] + (out[i] || strings[i]); });
   }
 
-  // ── Section: Triple Zero Event Slide (image from sheet) ────────────
-  // Reads the slide tab as a simple key->value map straight down columns
-  // A/B. This deliberately bypasses csvToOffers' header-row detection: a
-  // single-column settings tab has no "Field" header, and the offer-column
-  // logic would otherwise consume the first data row as a header and drop it.
-  async function buildTripleZeroSlide(csvText) {
-    const pic = document.getElementById('tz-slide');
-    if (!pic) return;
+  // ── Section: Triple Zero Banner (dynamic, from the sheet) ─────────
+  // Field rows x Item columns, same shape as the other tabs. The section
+  // level fields (eyebrow, title, subtitle, CTA, disclaimer) live in the
+  // Item 1 column; each item column supplies Separator Before, Big Value,
+  // Label and Subtext. Section hides on Visibility "hide" in Item 1, and an
+  // individual stat hides on "hide" in its own column.
+  async function buildTripleZeroBanner(csvText) {
+    const sec = document.getElementById('triple-zero-banner');
+    if (!sec) return;
+    const tpl = sec.querySelector('.tz-item[data-tz]');
+    if (!tpl) return;
 
-    // The slide's wrapper holds both the <picture> and the disclaimer block,
-    // so hide the wrapper (grandparent of <picture>) — not just <picture>.
-    const slideWrap = pic.closest('.acs-wrapper') || pic.parentNode;
-
-    const rows = parseCsv(csvText || '');
-    const kv = {};
-    rows.forEach(r => {
-      const key = (r[0] || '').trim();
-      const val = (r[1] || '').trim();
-      if (key) kv[key] = val;
-    });
-
-    if ((kv['Visibility'] || '').trim().toLowerCase() === 'hide') {
-      slideWrap.style.display = 'none';
+    const items = csvToOffers(csvText || '');
+    const first = items[0] || {};
+    if (!items.length || (first['Visibility'] || '').trim().toLowerCase() === 'hide') {
+      sec.remove();
       return;
     }
 
-    const desktop = kv['Image URL (desktop)'] || kv['Desktop'] || kv['Image URL'] || '';
-    const mobile  = kv['Image URL (mobile)']  || kv['Mobile']  || desktop;
-    const alt     = kv['Image Alt'] || 'Gettel Stadium Toyota Triple Zero Event';
-    const link    = kv['CTA URL'] || kv['Image CTA URL'] || '';
-    let   disc    = kv['Disclaimer'] || '';
+    const active = items.filter(o => isVisible(o) && (o['Big Value'] || o['Label']));
+    if (!active.length) { sec.remove(); return; }
 
-    if (!desktop) { slideWrap.style.display = 'none'; return; }
+    let eyebrow  = first['Section Eyebrow']  || '';
+    let title    = first['Section Title']    || '';
+    let sub      = first['Section Subtitle'] || '';
+    let ctaText  = first['CTA Text']         || '';
+    const ctaUrl = first['CTA URL']          || '';
+    let disc     = first['Disclaimer']       || '';
+    let labels   = active.map(o => o['Label']   || '');
+    let subtexts = active.map(o => o['Subtext'] || '');
 
-    const dSrc = pic.querySelector('.tz-slide-desktop');
-    const mSrc = pic.querySelector('.tz-slide-mobile');
-    const img  = pic.querySelector('.tz-slide-img');
-    if (dSrc) dSrc.srcset = desktop;
-    if (mSrc) mSrc.srcset = mobile;
-    if (img) { img.src = desktop; img.alt = alt; }
+    // Spanish: translate the words only. Big Value and Separator Before are
+    // figures and symbols, so they pass through untouched.
+    if (IS_ES) {
+      const [head, outLabels, outSubs] = await Promise.all([
+        translateBatch([eyebrow, title, sub, ctaText, disc]),
+        translateBatch(labels),
+        translateBatch(subtexts),
+      ]);
+      [eyebrow, title, sub, ctaText, disc] = head;
+      labels   = outLabels;
+      subtexts = outSubs;
+    }
 
-    if (link && img) {
-      const a = document.createElement('a');
-      a.href = link;
-      pic.parentNode.insertBefore(a, pic);
-      a.appendChild(pic);
+    const setOrHide = (scope, cls, val) => {
+      const el = scope.querySelector('.' + cls);
+      if (!el) return;
+      if (val) { el.textContent = val; el.style.display = ''; }
+      else { el.textContent = ''; el.style.display = 'none'; }
+    };
+
+    setOrHide(sec, 'tz-eyebrow', eyebrow);
+    setOrHide(sec, 'tz-title',   title);
+    setOrHide(sec, 'tz-sub',     sub);
+
+    const parent = tpl.parentNode;
+    active.forEach((o, i) => {
+      const item = tpl.cloneNode(true);
+      item.setAttribute('data-tz', String(i + 1));
+      // Separator only ever sits between items, never before the first one.
+      setOrHide(item, 'tz-sep', i === 0 ? '' : (o['Separator Before'] || ''));
+      setOrHide(item, 'tz-value',   o['Big Value'] || '');
+      setOrHide(item, 'tz-label',   labels[i]);
+      setOrHide(item, 'tz-subtext', subtexts[i]);
+      markReady(item);
+      parent.insertBefore(item, tpl);
+    });
+    tpl.remove();
+
+    // CTA — needs both a label and a URL to be worth showing
+    const ctaWrap = sec.querySelector('.tz-cta-wrap');
+    const cta     = sec.querySelector('.tz-cta');
+    if (cta && ctaWrap && ctaText && ctaUrl) {
+      cta.textContent = ctaText;
+      cta.href = ctaUrl;
+      ctaWrap.style.display = '';
     }
 
     // Disclaimer — only reveal the roll-up if the sheet supplies text
     if (disc) {
-      if (IS_ES) { const [t] = await translateBatch([disc]); disc = t || disc; }
-      const discEl = slideWrap.querySelector('.tz-disc');
-      const wrap   = slideWrap.querySelector('.tz-disc-wrap');
+      const discEl = sec.querySelector('.tz-disc');
+      const wrap   = sec.querySelector('.tz-disc-wrap');
       if (discEl) discEl.textContent = disc;
       if (wrap)   wrap.style.display = '';
     }
+
+    sec.style.display = '';
   }
 
   // ── Section: Gettel's Got It! (full 3-col width) ───────────────────
@@ -806,11 +837,9 @@
         const leaseCsv = await fetchTab(TABS.leases399);
         await buildVehicleCards(csvToOffers(leaseCsv));
       } else {
-        const [leaseCsv, slideCsv, ggCsv, programsCsv] = await Promise.all([
+        const [leaseCsv, tzCsv, ggCsv, programsCsv] = await Promise.all([
           fetchTab(TABS.lease),
-          TABS.tz_slide && TABS.tz_slide !== 'REPLACE_ME'
-            ? fetchTab(TABS.tz_slide).catch(() => '')
-            : Promise.resolve(''),
+          fetchTab(TABS.tz_banner).catch(() => ''),
           fetchTab(TABS.gg),
           fetchTab(TABS.programs),
         ]);
@@ -818,7 +847,7 @@
         await Promise.all([
           buildVehicleCards(csvToOffers(leaseCsv)),
           buildIncludesBar(),
-          buildTripleZeroSlide(slideCsv),
+          buildTripleZeroBanner(tzCsv),
           buildGettelsGotIt(csvToOffers(ggCsv)),
           buildSpecialPrograms(csvToOffers(programsCsv)),
         ]);
