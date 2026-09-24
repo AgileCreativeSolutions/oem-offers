@@ -39,6 +39,15 @@
  * Ribbon Text:
  *   Optional promotional banner across the top of the card (e.g. "Enhanced Savings on Kicks!").
  *   Leave blank to keep the legacy thin red bar.
+ *
+ * Model filter (optional, for model overview pages):
+ *   Add data-model to the #anb-specials container to show only matching vehicles, e.g.
+ *     <div class="acs-row" id="anb-specials" data-model="frontier"></div>
+ *   Add data-exclude (space-separated) to drop variants that share the model name, e.g.
+ *     data-model="rogue" data-exclude="phev hybrid e-power"
+ *   Terms are matched as whole words against Model Title 1, Model Title 2, Nav Label,
+ *   and the column header. With no data-model the page shows every vehicle (specials page).
+ *   On a filtered page, the enclosing .acs-wrapper is hidden if no vehicle matches.
  */
 
 (function () {
@@ -127,6 +136,23 @@
   // Returns a unique vehicle ID derived from Model Title 1 (e.g. "2026 Nissan ROGUE" → "2026-nissan-rogue")
   function vehicleId(r, index) {
     return slug(r['Model Title 1'] || r['_colHeader'] || ('vehicle-' + index));
+  }
+
+  // Optional model filter read from data-model / data-exclude on the cards container
+  function terms(str) {
+    return String(str || '').split(/[\s,]+/).map(slug).filter(Boolean);
+  }
+
+  function hasTerm(r, term) {
+    var hay = '-' + slug([r['Model Title 1'], r['Model Title 2'], r['Nav Label'], r['_colHeader']].join(' ')) + '-';
+    return hay.indexOf('-' + term + '-') !== -1;
+  }
+
+  function matchesFilter(r, include, exclude) {
+    if (!include.length) return true;
+    var hit = include.some(function (t) { return hasTerm(r, t); });
+    var blocked = exclude.some(function (t) { return hasTerm(r, t); });
+    return hit && !blocked;
   }
 
 
@@ -405,6 +431,17 @@
       return;
     }
 
+    var include = terms(cardsEl.getAttribute('data-model'));
+    var exclude = terms(cardsEl.getAttribute('data-exclude'));
+    var filtered = include.length > 0;
+
+    // Filtered pages: hide the whole offer section if nothing renders
+    function hideSection() {
+      if (!filtered) return;
+      var wrap = cardsEl.closest ? cardsEl.closest('.acs-wrapper') : null;
+      if (wrap) wrap.style.display = 'none';
+    }
+
     fetch(CSV_URL)
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -417,10 +454,11 @@
         var rows = allRows.filter(function (r) {
           if (!r['Model Title 1'] && !r['Offer Image']) return false; // blank reserve column
           var v = (r['Visibility'] || '').toLowerCase();
-          return v !== 'hide';
+          if (v === 'hide') return false;
+          return matchesFilter(r, include, exclude);
         });
 
-        if (!rows.length) return;
+        if (!rows.length) { hideSection(); return; }
 
         // Render cards
         cardsEl.innerHTML = rows.map(buildCard).join('\n');
@@ -434,6 +472,7 @@
       })
       .catch(function (err) {
         console.error('ANB Specials: failed to load specials data.', err);
+        hideSection();
       });
   }
 
