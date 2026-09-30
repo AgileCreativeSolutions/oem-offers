@@ -329,7 +329,7 @@
       (r['Ribbon Text'] ? esc(r['Ribbon Text']) : '') +
       '</div>';
 
-    return '<div class="acs-twelve acs-six-2xl acs-columns">' +
+    return '<div class="acs-twelve acs-six-lg acs-columns">' +
       '<div id="' + id + '" class="acs-row acs-mb-8">' +
         '<div class="acs-twelve">' +
           '<div class="acs-offer-cell">' +
