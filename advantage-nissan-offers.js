@@ -279,7 +279,7 @@
     return stats.map(function (s, i) {
       var border = i < stats.length - 1 ? ' acs-offer-border' : '';
       return '<div class="acs-three-sm acs-twelve acs-columns' + border + '">' +
-        '<p class="acs-text-7 acs-text-10-md acs-lh-2 acs-black acs-mb-4 acs-offer">' + esc(s.value) + '</p>' +
+        '<p class="acs-text-7 acs-text-10-md acs-text-8-lg acs-text-10-xl acs-nowrap acs-lh-2 acs-black acs-mb-4 acs-offer">' + esc(s.value) + '</p>' +
         '<p class="acs-lh-3 acs-text-4">' + esc(s.label) + '</p>' +
         '</div>';
     }).join('');
