@@ -4,6 +4,22 @@
   var csvUrl = container.getAttribute('data-csv');
   if (!csvUrl) return;
 
+  // Opens the Short Term Lease modal and preselects the model in its dropdown
+  window.pvOpenStl = function (modalId, link) {
+    var preselect = link ? link.getAttribute('data-mv') : '';
+    var modal = document.querySelector(modalId);
+    if (modal && preselect) {
+      var selects = modal.querySelectorAll('fieldset select');
+      for (var i = 0; i < selects.length; i++) {
+        var opts = selects[i].options;
+        for (var o = 0; o < opts.length; o++) {
+          if (opts[o].value === preselect) { selects[i].value = preselect; break; }
+        }
+      }
+    }
+    if (window.liteModal) window.liteModal.open(modalId);
+  };
+
   var SKELETON_COUNT = 6;
   var style = document.createElement('style');
   style.textContent =
@@ -161,8 +177,24 @@
         if (showOffer3 && o3Value) panelHTML += buildPanel(o3Label || 'Offer', o3Value, 3, o3Term, o3Note);
         if (showOffer4 && o4Value) panelHTML += buildPanel(o4Label || 'Offer', o4Value, 4, o4Term, o4Note);
 
-        var stlHTML = showLease
-          ? '<div class="acs-mt-2 acs-columns acs-text-center-xl"><p class="acs-bold acs-text-5 acs-lh-4 acs-my-2">Interested in a <span class="acs-nowrap">Short Term Lease</span> Quote? <a href="#/" onclick="liteModal.open(\'#shorttermleasepopup\')" tabindex="0" class="acs-link-accent" data-mv="' + esc(model) + ' Recharge">Learn More +</a></p></div>'
+        // Short Term Lease link, driven by the sheet
+        // STL Visibility: "hide" turns it off (defaults to showing whenever the lease panel shows)
+        // STL Text / STL Link Text: copy overrides
+        // STL URL: a page link (e.g. /short-term-lease.htm) or a modal ID starting with # (e.g. #shorttermleasepopup)
+        var showStl     = showLease && get('STL Visibility').toLowerCase() !== 'hide';
+        var stlText     = get('STL Text') || 'Interested in a <span class="acs-nowrap">Short Term Lease</span> Quote?';
+        var stlLinkText = get('STL Link Text') || 'Learn More +';
+        var stlUrl      = get('STL URL') || '#shorttermleasepopup';
+        // STL Model: the value to preselect in the modal's "Select Your Model" dropdown.
+        // Defaults to the first word of the Model cell (e.g. "XC40 Core Dark..." becomes "XC40").
+        var stlModel    = get('STL Model') || model.split(/\s+/)[0].replace(/,$/, '');
+        var stlTextOut  = get('STL Text') ? esc(stlText) : stlText;
+        var stlLink     = stlUrl.charAt(0) === '#'
+          ? '<a href="#/" onclick="pvOpenStl(\'' + esc(stlUrl) + '\', this)" role="button" tabindex="0" class="acs-link-accent" data-mv="' + esc(stlModel) + '">' + esc(stlLinkText) + '</a>'
+          : '<a href="' + esc(stlUrl) + '" class="acs-link-accent" data-mv="' + esc(stlModel) + '">' + esc(stlLinkText) + '</a>';
+
+        var stlHTML = showStl
+          ? '<div class="acs-mt-2 acs-columns acs-text-center-xl"><p class="acs-bold acs-text-5 acs-lh-4 acs-my-2">' + stlTextOut + ' ' + stlLink + '</p></div>'
           : '';
 
         // All disclaimers render at the same size (acs-text-4)
