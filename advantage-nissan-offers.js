@@ -3,20 +3,21 @@
  * ACS | AgileCreativeSolutions.github.io/oem-offers/advantage-nissan/
  *
  * Page integration:
- *   1. Add id="anb-specials-nav" to the anchor links span inside .acs-anchors
+ *   1. Add id="anb-specials-nav" to the filter button container inside .acs-anchors
  *   2. Add id="anb-specials" to the <div class="acs-row"> inside the specials wrapper
  *   3. Add <script src="URL_TO_THIS_FILE"></script> before </body>
  *
  * Spreadsheet layout (GMCD-style: fields as rows, vehicles as columns)
  *   Row 1  : Section title headers
- *   Row 2  : Vehicle column headers (B = Vehicle 1 ... P = Vehicle 15)
+ *   Row 2  : Vehicle column headers (B = Vehicle 1 ... Z = Vehicle 25)
  *   Rows 3+: Field rows — one field per row, values across vehicle columns
  *
  *   Columns B–J  : Pre-filled vehicles (Rogue → Pathfinder)
- *   Columns K–P  : Reserve slots for future vehicles (leave blank or fill as needed)
+ *   Columns K–Z  : Reserve slots for future vehicles (leave blank or fill as needed)
+ *   The script reads every column in row 2, so no code change is needed to add slots.
  *
  * Field rows (column A label → what the script reads):
- *   Visibility | Ribbon Text | Offer Image | Model Title 1 | Model Title 2 | Model Details |
+ *   Visibility | Nav Label | Ribbon Text | Offer Image | Model Title 1 | Model Title 2 | Model Details |
  *   Header Label 1 | Header Value 1 | Header Label 2 | Header Value 2 |
  *   Lease | Tab Label | Lease | Payment | Lease | Down | Lease | Down Label |
  *   Lease | Months | Lease | Miles |
@@ -39,6 +40,12 @@
  * Ribbon Text:
  *   Optional promotional banner across the top of the card (e.g. "Enhanced Savings on Kicks!").
  *   Leave blank to keep the legacy thin red bar.
+ *
+ * Model filter tabs (specials page):
+ *   One button per model, built from the Nav Label row (e.g. Rogue, Sentra, Kicks).
+ *   "Show All" comes first, then models A to Z. A tab only appears if that model has
+ *   at least one visible offer. Offers with a blank Nav Label appear under Show All only.
+ *   Matching is case-insensitive, so "Rogue" and "ROGUE" share one tab.
  *
  * Model filter (optional, for model overview pages):
  *   Add data-model to the #anb-specials container to show only matching vehicles, e.g.
@@ -133,9 +140,18 @@
       .replace(/"/g, '&quot;');
   }
 
-  // Returns a unique vehicle ID derived from Model Title 1 (e.g. "2026 Nissan ROGUE" → "2026-nissan-rogue")
+  // Returns a vehicle ID derived from Model Title 1 (e.g. "2026 Nissan ROGUE" → "2026-nissan-rogue").
+  // Duplicate titles get a numeric suffix (-2, -3...) so every card and its tabs have unique IDs.
+  var usedIds = {};
   function vehicleId(r, index) {
-    return slug(r['Model Title 1'] || r['_colHeader'] || ('vehicle-' + index));
+    var base = slug(r['Model Title 1'] || r['_colHeader'] || ('vehicle-' + index));
+    usedIds[base] = (usedIds[base] || 0) + 1;
+    return usedIds[base] === 1 ? base : base + '-' + usedIds[base];
+  }
+
+  // Model key for the filter tabs, from the Nav Label row (e.g. "Rogue" → "rogue")
+  function modelKey(r) {
+    return slug(r['Nav Label'] || '');
   }
 
   // Optional model filter read from data-model / data-exclude on the cards container
@@ -302,7 +318,7 @@
       priceHtml += '<p><strong class="acs-bold">' + esc(r['Header Label 2']) + ':</strong> ' + esc(r['Header Value 2']) + '</p>';
     }
     var priceCol = priceHtml
-      ? '<div class="acs-six-md acs-columns acs-my-1 acs-text-right-md acs-text-5 acs-lh-5"><div class="acs-columns">' + priceHtml + '</div></div>'
+      ? '<div class="acs-six-md acs-twelve-lg acs-six-xl acs-columns acs-my-1 acs-text-right-md acs-text-left-lg acs-text-right-xl acs-text-5 acs-lh-5"><div class="acs-columns">' + priceHtml + '</div></div>'
       : '';
 
     // CTA buttons
@@ -329,7 +345,7 @@
       (r['Ribbon Text'] ? esc(r['Ribbon Text']) : '') +
       '</div>';
 
-    return '<div class="acs-twelve acs-six-lg acs-columns">' +
+    return '<div class="acs-twelve acs-six-lg acs-columns anb-special-card" data-anb-model="' + esc(modelKey(r)) + '">' +
       '<div id="' + id + '" class="acs-row acs-mb-8">' +
         '<div class="acs-twelve">' +
           '<div class="acs-offer-cell">' +
@@ -341,7 +357,7 @@
               '<div class="acs-twelve acs-columns acs-pt-8">' +
                 '<div class="acs-row">' +
                   '<p class="acs-text-9 acs-mb-4 acs-px-4 acs-twelve">New <strong class="acs-bold">' + esc(title1) + '</strong> ' + esc(title2) + '</p>' +
-                  '<div class="acs-six-md acs-columns acs-my-1">' +
+                  '<div class="acs-six-md acs-twelve-lg acs-six-xl acs-columns acs-my-1">' +
                     '<p class="acs-text-5 acs-lh-5 acs-opacity-50">' + esc(details) + '</p>' +
                   '</div>' +
                   priceCol +
@@ -377,13 +393,43 @@
   }
 
 
-  // ─── ANCHOR NAV BUILDER ───────────────────────────────────────────────────
-  function buildNav(rows) {
-    return rows.map(function (r, i) {
-      var id    = vehicleId(r, i);
-      var label = r['Nav Label'] || r['Model Title 1'] || r['_colHeader'] || '';
-      return '<a data-smooth-scroll="" href="#' + id + '">' + esc(label) + '</a>';
-    }).join(' |\n');
+  // ─── MODEL FILTER NAV ─────────────────────────────────────────────────────
+  // "Show All" + one button per model with a visible offer, sorted A to Z.
+  function buildFilterNav(navEl, rows, cardsEl) {
+    var models = {};
+    rows.forEach(function (r) {
+      var key = modelKey(r);
+      if (key && !models[key]) models[key] = r['Nav Label'].trim();
+    });
+    var keys = Object.keys(models).sort(function (a, b) {
+      return models[a].toLowerCase() < models[b].toLowerCase() ? -1 : 1;
+    });
+
+    var buttons = [{ key: 'all', label: 'Show All' }].concat(keys.map(function (k) {
+      return { key: k, label: models[k] };
+    }));
+
+    navEl.innerHTML = buttons.map(function (b, idx) {
+      return '<button class="acs-filter-btn' + (idx === 0 ? ' acs-active' : '') + '" data-anb-filter="' + esc(b.key) + '">' + esc(b.label) + '</button>';
+    }).join('');
+
+    navEl.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('[data-anb-filter]') : null;
+      if (!btn) return;
+      var filter = btn.getAttribute('data-anb-filter');
+      var allBtns = navEl.querySelectorAll('[data-anb-filter]');
+      for (var i = 0; i < allBtns.length; i++) allBtns[i].classList.remove('acs-active');
+      btn.classList.add('acs-active');
+      applyFilter(cardsEl, filter);
+    });
+  }
+
+  function applyFilter(cardsEl, filter) {
+    var cards = cardsEl.querySelectorAll('.anb-special-card');
+    for (var i = 0; i < cards.length; i++) {
+      var show = filter === 'all' || cards[i].getAttribute('data-anb-model') === filter;
+      cards[i].style.display = show ? '' : 'none';
+    }
   }
 
 
@@ -463,9 +509,9 @@
         // Render cards
         cardsEl.innerHTML = rows.map(buildCard).join('\n');
 
-        // Render anchor nav (if container exists)
+        // Render model filter tabs (if container exists)
         var navEl = document.getElementById(NAV_CONTAINER);
-        if (navEl) navEl.innerHTML = buildNav(rows);
+        if (navEl) buildFilterNav(navEl, rows, cardsEl);
 
         // Wire up tab clicks
         initTabs(cardsEl);
