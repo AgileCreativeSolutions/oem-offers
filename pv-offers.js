@@ -109,8 +109,12 @@
         var cta1Url      = get('CTA 1 URL')  || '/special-offer-contact-form.htm';
         var cta2Text     = get('CTA 2 Text') || 'View Inventory';
         var cta2Url      = get('CTA 2 URL')  || '/new-inventory/index.htm';
-        var disc1        = get('Disclaimer [1]');
-        var disc2        = get('Disclaimer [2]');
+        var disclaimers  = [
+          get('Disclaimer [1]'),
+          get('Disclaimer [2]'),
+          get('Disclaimer [3]'),
+          get('Disclaimer [4]')
+        ];
 
         navItems.push('<a href="#' + anchorId + '" class="acs-accent">' + esc(model) + '</a>');
 
@@ -161,8 +165,13 @@
           ? '<div class="acs-mt-2 acs-columns acs-text-center-xl"><p class="acs-bold acs-text-5 acs-lh-4 acs-my-2">Interested in a <span class="acs-nowrap">Short Term Lease</span> Quote? <a href="#/" onclick="liteModal.open(\'#shorttermleasepopup\')" tabindex="0" class="acs-link-accent" data-mv="' + esc(model) + ' Recharge">Learn More +</a></p></div>'
           : '';
 
-        var discHTML = (disc1 || disc2)
-          ? '<details class="acs-text-4 acs-lh-8 acs-pt-2 acs-px-5"><summary>Disclaimer</summary>' + (disc1 ? '<p class="acs-text-4 acs-mb-2">' + esc(disc1) + '</p>' : '') + (disc2 ? '<p class="acs-text-3 acs-mb-2">' + esc(disc2) + '</p>' : '') + '</details>'
+        // All disclaimers render at the same size (acs-text-4)
+        var discBody = '';
+        for (var d = 0; d < disclaimers.length; d++) {
+          if (disclaimers[d]) discBody += '<p class="acs-text-4 acs-mb-2">' + esc(disclaimers[d]) + '</p>';
+        }
+        var discHTML = discBody
+          ? '<details class="acs-text-4 acs-lh-8 acs-pt-2 acs-px-5"><summary>Disclaimer</summary>' + discBody + '</details>'
           : '';
 
         cards +=
