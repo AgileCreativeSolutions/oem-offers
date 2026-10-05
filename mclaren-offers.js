@@ -1,4 +1,4 @@
- // ---------- CSV PARSER ----------
+// ---------- CSV PARSER ----------
 function parseCSV(csv) {
 const rows = [];
 let inQuotes = false,
@@ -174,7 +174,8 @@ const url = new URL(value, location.origin);
 if (url.protocol === 'http:' || url.protocol === 'https:') {
 if (el) {
 el.href = url.href;
-el.style.display = "inline-block";
+// Clear inline display so the stylesheet's display (inline-flex on .acs-button) applies
+el.style.removeProperty("display");
 // optional:
 // el.target = "_blank";
 // el.rel = "noopener noreferrer";
@@ -190,7 +191,8 @@ if (callEl) {
 if (phoneVal && !isHide(phoneVal)) {
 const digits = phoneVal.replace(/\D/g, '');
 callEl.href = `tel:+1${digits}`;
-callEl.style.display = "inline-block";
+// Clear the inline display:none from the HTML so the stylesheet's display applies
+callEl.style.removeProperty("display");
 } else {
 callEl.style.display = "none";
 }
