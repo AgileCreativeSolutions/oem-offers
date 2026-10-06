@@ -174,7 +174,8 @@ if (url.protocol === 'http:' || url.protocol === 'https:') {
 const el = section.querySelector(`.${className}`);
 if (el) {
 el.href = url.href;
-el.style.display = "inline-block";
+// Clear inline display so the stylesheet's display (inline-flex on .acs-button) applies
+el.style.removeProperty("display");
 // optional:
 // el.target = "_blank";
 // el.rel = "noopener noreferrer";
