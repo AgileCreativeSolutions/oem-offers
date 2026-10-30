@@ -6,9 +6,9 @@
  * Each card supports up to 4 generic offer blocks stacked vertically.
  *
  * Offer block fields (N = 1–4):
- *   Hide Offer N   — blank = show | "hide" = suppress block
- *   Offer N Label  — e.g. "Lease for:"
- *   Offer N Value  — e.g. "$348/mo*"
+ *   Hide Offer N             — blank = show | "hide" = suppress block
+ *   Offer N Label            — e.g. "Lease for:"
+ *   Offer N Value            — e.g. "$348/mo*"
  *   Offer N Detail 1 / Detail 2 — supporting lines
  *
  * Card visibility:
@@ -17,8 +17,8 @@
 (function () {
   'use strict';
 
-  var ROOT_ID     = 'sf-specials';
-  var SKEL_COUNT  = 3;
+  var ROOT_ID = 'sf-specials';
+  var SKEL_COUNT = 3;
   var SKEL_CSS_ID = 'acs-skel-styles';
 
   function injectSkeletonStyles() {
@@ -96,7 +96,7 @@
       if (!lines[r].trim()) continue;
       var cols = splitLine(lines[r]);
       var field = (cols[0] || '').trim().replace(/\s*\[.*?\]\s*$/, '').trim();
-      if (!field || field.charAt(0) === '\u2014') continue;
+      if (!field || field.charAt(0) === '—') continue;
       for (var v = 0; v < numOffers; v++) {
         offers[v][field] = (cols[v + 1] || '').trim();
       }
@@ -113,8 +113,8 @@
   // ── Build one offer block (vertical) ─────────────────────────────────
   function buildOfferBlock(o, n) {
     if (isHidden(o['Hide Offer ' + n])) return '';
-    var label = esc(o['Offer ' + n + ' Label']    || '');
-    var value = esc(o['Offer ' + n + ' Value']    || '');
+    var label = esc(o['Offer ' + n + ' Label'] || '');
+    var value = esc(o['Offer ' + n + ' Value'] || '');
     var d1    = esc(o['Offer ' + n + ' Detail 1'] || '');
     var d2    = esc(o['Offer ' + n + ' Detail 2'] || '');
     if (!label && !value) return '';
@@ -122,20 +122,20 @@
       + (label ? '<p class="acs-bold">' + label + '</p>' : '')
       + (value ? '<h3 class="acs-h6 acs-mb-2 acs-bold"><span class="acs-h3 acs-accent acs-bold">' + value + '</span></h3>' : '')
       + (d1    ? '<p class="acs-text-5 acs-lh-4">' + d1 + '</p>' : '')
-      + (d2    ? '<p class="acs-text-4 acs-lh-4 acs-mb-2">' + d2 + '</p>' : '')
+      + (d2    ? '<p class="acs-text-5 acs-lh-4 acs-mb-2">' + d2 + '</p>' : '')
       + '</div>';
   }
 
   function buildCard(o) {
-    var year       = esc(o['Year']           || '');
-    var model      = esc(o['Model']          || '');
+    var year       = esc(o['Year'] || '');
+    var model      = esc(o['Model'] || '');
     var trim       = esc(o['Trim / Package'] || '');
-    var imgSrc     =     o['Image URL']      || '';
-    var stock      = esc(o['Stock #']        || '');
-    var vin        = esc(o['VIN']            || '');
-    var ctaLabel   = esc(o['CTA Label']      || 'Shop Now');
-    var ctaURL     =     o['CTA URL']        || '#';
-    var disclaimer = esc(o['Disclaimer']     || '');
+    var imgSrc     = o['Image URL'] || '';
+    var stock      = esc(o['Stock #'] || '');
+    var vin        = esc(o['VIN'] || '');
+    var ctaLabel   = esc(o['CTA Label'] || 'Shop Now');
+    var ctaURL     = o['CTA URL'] || '#';
+    var disclaimer = esc(o['Disclaimer'] || '');
 
     var stockParts = [];
     if (stock) stockParts.push('Stock #' + stock);
@@ -195,7 +195,7 @@
     fetchCSV(csvURL)
       .then(function (text) {
         var offers = csvToOffers(text);
-        var cards  = offers
+        var cards = offers
           .filter(function (o) { return !isHidden(o['Visibility']); })
           .map(buildCard).join('');
 
