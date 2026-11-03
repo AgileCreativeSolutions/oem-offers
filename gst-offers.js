@@ -512,15 +512,15 @@
       else tagEl.style.display = 'none';
     }
 
-    // Event colors. Set with !important so framework/DDC classes on the
-    // section or tagline can't override the sheet value.
+    // Event colors. The visible banner is the inner .eb-panel (the outer
+    // section is a white acs-wrapper), so the background goes on the panel
+    // and the text color on the tagline. Set with !important so the page CSS
+    // (#eeeeee panel, #000000 tagline) can't override the sheet value.
+    const panel     = sec.querySelector('.eb-panel');
     const bgColor   = normalizeHex(data['Background Color']);
     const textColor = normalizeHex(data['Text Color']);
-    if (bgColor) sec.style.setProperty('background-color', bgColor, 'important');
-    if (textColor) {
-      sec.style.setProperty('color', textColor, 'important');
-      if (tagEl) tagEl.style.setProperty('color', textColor, 'important');
-    }
+    if (bgColor && panel) panel.style.setProperty('background-color', bgColor, 'important');
+    if (textColor && tagEl) tagEl.style.setProperty('color', textColor, 'important');
 
     const logo = sec.querySelector('.eb-logo');
     if (logo && logoUrl) {
